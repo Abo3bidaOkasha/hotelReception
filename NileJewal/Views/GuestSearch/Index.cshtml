@@ -1,0 +1,211 @@
+﻿@model IEnumerable<NileJewal.Models.Booking>
+
+@{
+    ViewData["Title"] = "سجل النزلاء والحجوزات الشامل";
+    string searchTerm = ViewData["SearchTerm"] as string ?? "";
+}
+
+<style>
+    .search-container {
+        font-family: inherit;
+    }
+
+    .card-custom {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e2e8f0;
+    }
+
+    .table-custom {
+        vertical-align: middle;
+        font-size: 0.92rem;
+    }
+
+        .table-custom th {
+            background-color: #1e293b;
+            color: #ffffff;
+            font-weight: 600;
+            white-space: nowrap;
+            border-bottom: 2px solid #0f172a;
+            padding: 14px 16px;
+        }
+
+        .table-custom td {
+            padding: 14px 16px;
+            color: #334155;
+        }
+
+    .guest-badge {
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 700;
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid #bfdbfe;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .room-badge {
+        background-color: #0f172a;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+    }
+
+    .amount-badge {
+        background-color: #dcfce7;
+        color: #15803d;
+        font-weight: 700;
+        padding: 6px 12px;
+        border-radius: 8px;
+        display: inline-block;
+    }
+
+    .paid-badge {
+        background-color: #fef3c7;
+        color: #b45309;
+        font-weight: 700;
+        padding: 6px 12px;
+        border-radius: 8px;
+        display: inline-block;
+    }
+
+    .search-btn {
+        background-color: #059669;
+        border-color: #059669;
+        color: white;
+        transition: all 0.2s ease-in-out;
+    }
+
+        .search-btn:hover {
+            background-color: #047857;
+            border-color: #047857;
+            color: white;
+        }
+</style>
+
+<div class="container-fluid py-4 search-container" dir="rtl">
+
+    <!-- الهيدر وحقل البحث -->
+    <div class="card-custom p-4 mb-4">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-6">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="p-3 rounded-3 text-white" style="background-color: #059669;">
+                        <i class="bi bi-person-search fs-2"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-1 fw-bold text-dark fs-4">البحث الشامل عن النزلاء</h3>
+                        <small class="text-muted">عرض كافة حجوزات النزيل بالاسم أو رقم الموبايل</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <form asp-controller="GuestSearch" asp-action="Index" method="get">
+                    <div class="input-group input-group-lg shadow-sm">
+                        <input type="text"
+                               name="searchTerm"
+                               value="@searchTerm"
+                               class="form-control rounded-start-3 text-end fs-6"
+                               placeholder="أدخل اسم النزيل أو رقم الموبايل..."
+                               required />
+                        <button type="submit" class="btn search-btn px-4 fw-semibold rounded-end-3 fs-6">
+                            <i class="bi bi-search me-1"></i> بحث
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- نتائج البحث -->
+    @if (!string.IsNullOrWhiteSpace(searchTerm))
+    {
+        <div class="card-custom p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3 px-2 pt-2">
+                <h5 class="fw-bold text-dark mb-0">
+                    نتائج البحث عن: <span class="text-success">"@searchTerm"</span>
+                </h5>
+                <span class="badge bg-dark fs-6 px-3 py-2" style="border-radius: 8px;">إجمالي الحجوزات: @Model.Count()</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle table-custom mb-0 text-center">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th class="text-start">اسم النزيل</th>
+                            <th>رقم الموبايل</th>
+                            <th>رقم الغرفة</th>
+                            <th>تاريخ الوصول (Check-In)</th>
+                            <th>تاريخ المغادرة (Check-Out)</th>
+                            <th>المبلغ الإجمالي</th>
+                            <th>المدفوع</th>
+                            <th>ملاحظات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            int index = Model.Count();
+                            foreach (var booking in Model)
+                            {
+                                <tr>
+                                    <td class="fw-bold text-secondary">@index</td>
+                                    <td class="text-start">
+                                        <span class="guest-badge">
+                                            <i class="bi bi-person-fill me-2"></i> @booking.GuestName
+                                        </span>
+                                    </td>
+                                    <td dir="ltr" class="fw-bold text-dark">
+                                        @(string.IsNullOrEmpty(booking.GuestPhone) ? "-" : booking.GuestPhone)
+                                    </td>
+                                    <td>
+                                        <span class="room-badge">غرفة @booking.RoomId</span>
+                                    </td>
+                                    <td class="fw-semibold">@booking.CheckInDate.ToString("yyyy/MM/dd")</td>
+                                    <td class="fw-semibold">@booking.CheckOutDate.ToString("yyyy/MM/dd")</td>
+                                    <td>
+                                        <span class="amount-badge">@booking.TotalAmount.ToString("N2")</span>
+                                    </td>
+                                    <td>
+                                        <span class="paid-badge">@booking.PaidAmount.ToString("N2")</span>
+                                    </td>
+                                    <td class="text-secondary small">
+                                        @(string.IsNullOrEmpty(booking.Notes) ? "-" : booking.Notes)
+                                    </td>
+                                </tr>
+                                index--;
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center py-5 text-muted">
+                                    <i class="bi bi-search fs-1 d-block mb-3 opacity-50"></i>
+                                    لم يتم العثور على أي حجوزات تطابق <strong>"@searchTerm"</strong>.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card-custom p-5 text-center text-muted">
+            <div class="py-4">
+                <i class="bi bi-person-bounding-box fs-1 d-block mb-3 text-success opacity-75"></i>
+                <h5 class="fw-bold text-dark mb-2">ابحث في سجل النزلاء</h5>
+                <p class="mb-0 text-secondary">اكتب اسم النزيل أو رقم موبايله في مربع البحث للوصول لكافة الحجوزات السابقة والحالية.</p>
+            </div>
+        </div>
+    }
+
+</div>

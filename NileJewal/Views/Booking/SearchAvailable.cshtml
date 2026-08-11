@@ -1,0 +1,231 @@
+﻿@using NileJewal.Models
+@model IEnumerable<NileJewal.Models.Room>
+
+@{
+    ViewData["Title"] = "بحث عن الغرف المتاحة";
+}
+
+<div class="container py-4" dir="rtl">
+    <!-- كارت شريط البحث العلوي -->
+    <div class="card shadow-sm border-0 mb-4 bg-white rounded-3 p-4">
+        <h3 class="text-primary fw-bold mb-3">
+            <i class="fas fa-search me-2"></i> البحث عن الغرف المتاحة خلال فترة
+        </h3>
+        
+        <form method="get" asp-action="SearchAvailable" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">من تاريخ:</label>
+                <input type="date" name="startDate" class="form-control" value="@ViewBag.StartDate" required />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">إلى تاريخ:</label>
+                <input type="date" name="endDate" class="form-control" value="@ViewBag.EndDate" required />
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter me-1"></i> بحث
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- شبكة عرض الغرف المتاحة -->
+    <div class="row">
+        @if (Model != null && Model.Any())
+        {
+            foreach (var room in Model)
+            {
+                <div class="col-md-3 mb-4">
+                    <div class="card shadow-sm border-0 rounded-3 text-center" style="background-color: #ffffff; border-top: 5px solid #198754 !important;">
+                        <div class="card-body">
+                            <!-- شريط حالة الغرفة العلوي -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge bg-success px-3 py-2">متاحة</span>
+                                <h5 class="fw-bold mb-0">غرفة رقم: @room.RoomNumber</h5>
+                            </div>
+
+                            <!-- أيقونة الحالة -->
+                            <div class="my-4 text-success">
+                                <i class="fas fa-check-circle fa-3x"></i>
+                                <p class="text-muted mt-2 small">الغرفة جاهزة للحجز</p>
+                            </div>
+
+                            <!-- زر فتح نافذة الحجز المنبثقة Modal -->
+                            <button type="button" class="btn btn-primary w-100 rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#bookModal-@room.Id">
+                                <i class="fas fa-plus-circle me-1"></i> حجز جديد
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- نافذة الـ Modal لكل غرفة مع أرقام تعريفية فريدة -->
+                <div class="modal fade" id="bookModal-@room.Id" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title">إضافة حجز لغرفة @room.RoomNumber</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            
+                            <form asp-action="Create" asp-controller="Booking" method="post">
+                                <div class="modal-body text-start" dir="rtl">
+                                    <input type="hidden" name="RoomId" value="@room.Id" />
+                                    
+                                    <!-- اسم النزيل -->
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">اسم النزيل</label>
+                                        <input type="text" name="GuestName" class="form-control" required />
+                                    </div>
+
+                                    <!-- رقم الموبايل -->
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">رقم الموبايل</label>
+                                        <input type="text" name="GuestPhone" id="phoneInput-@room.Id" class="form-control" placeholder="010XXXXXXXX" oninput="validatePhone(this)" />
+                                        <div id="phoneError" class="text-danger small mt-1" style="display:none;"></div>
+                                    </div>
+
+                                    <!-- نوع الغرفة -->
+                                    <div class="mb-2">
+                                        <label class="form-label fw-bold">نوع الغرفة</label>
+                                        <select name="RoomType" id="createRoomType-@room.Id" class="form-select" onchange="toggleOccupancy('createRoomType-@room.Id', 'createOccupancyContainer-@room.Id')" required>
+                                            <option value="">-- اختر نوع الغرفة --</option>
+                                            <option value="إسكان">إسكان</option>
+                                            <option value="MU">MU</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- عدد الأفراد -->
+                                    <div class="mb-2" id="createOccupancyContainer-@room.Id">
+                                        <label class="form-label fw-bold">عدد الأفراد</label>
+                                        <select name="OccupancyType" class="form-select">
+                                            <option value="">-- اختر عدد الافراد --</option>
+                                            <option value="سنجل">سنجل</option>
+                                            <option value="دبل">دبل</option>
+                                            <option value="تريبل">تريبل</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- شامل أغذية / وجبات؟ -->
+                                    <div class="mb-2">
+                                        <div class="form-check form-switch my-2">
+                                            <input class="form-check-input" type="checkbox" name="HasFood" value="true" id="createHasFood-@room.Id" onchange="toggleFoodFields('createHasFood-@room.Id', 'createFoodDetails-@room.Id')">
+                                            <input type="hidden" name="HasFood" value="false" />
+                                            <label class="form-check-label fw-bold" for="createHasFood-@room.Id">شامل أغذية / وجبات؟</label>
+                                        </div>
+                                    </div>
+
+                                    <!-- تفاصيل الأغذية -->
+                                    <div id="createFoodDetails-@room.Id" class="d-none border p-2 rounded bg-light mb-2">
+                                        <div class="mb-2">
+                                            <label class="form-label fw-bold">تكلفة الأغذية اليومية</label>
+                                            <input type="number" step="0.01" name="DailyFoodAmount" class="form-control" value="0" />
+                                        </div>
+                                    </div>
+
+                                    <!-- سعر الليلة & المبلغ المدفوع -->
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-6">
+                                            <label class="form-label fw-bold">سعر الليلة</label>
+                                            <input type="number" step="0.01" name="PricePerNight" class="form-control" required />
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label fw-bold">المبلغ المدفوع</label>
+                                            <input type="number" step="100" name="PaidAmount" class="form-control" value="0" />
+                                        </div>
+                                    </div>
+
+                                    <!-- رقم الإيصال -->
+                                    <div class="mb-2">
+                                        <label class="form-label fw-bold">رقم الإيصال</label>
+                                        <input type="text" name="ReceiptNumber" class="form-control" />
+                                    </div>
+
+                                    <!-- تاريخ الوصول & تاريخ المغادرة -->
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-bold">تاريخ الوصول</label>
+                                            <input type="date" name="CheckInDate" class="form-control" value="@ViewBag.StartDate" required />
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-bold">تاريخ المغادرة</label>
+                                            <input type="date" name="CheckOutDate" class="form-control" value="@ViewBag.EndDate" required />
+                                        </div>
+                                    </div>
+
+                                    <!-- ملاحظات -->
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">ملاحظات</label>
+                                        <textarea name="Notes" class="form-control" rows="3"></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">إلغاء</button>
+                                    <button type="submit" class="btn btn-primary px-4">حفظ الحجز</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12">
+                <div class="alert alert-warning text-center shadow-sm py-4" role="alert">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p class="mb-0 fw-bold">لا توجد غرف متاحة في هذه الفترة للأسف.</p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // إظهار/إخفاء حقل عدد الأفراد بناءً على نوع الغرفة
+        function toggleOccupancy(typeSelectId, containerId) {
+            const select = document.getElementById(typeSelectId);
+            const container = document.getElementById(containerId);
+            if (select && container) {
+                if (select.value === 'MU') {
+                    container.classList.add('d-none');
+                } else {
+                    container.classList.remove('d-none');
+                }
+            }
+        }
+
+        // إظهار/إخفاء تفاصيل الأغذية
+        function toggleFoodFields(checkboxId, detailsId) {
+            const checkbox = document.getElementById(checkboxId);
+            const details = document.getElementById(detailsId);
+            if (checkbox && details) {
+                if (checkbox.checked) {
+                    details.classList.remove('d-none');
+                } else {
+                    details.classList.add('d-none');
+                }
+            }
+        }
+
+        // التحقق من صحة رقم الموبايل
+        function validatePhone(input) {
+            input.value = input.value.replace(/[^0-9]/g, '');
+            var errorDiv = document.getElementById('phoneError');
+            var pattern = /^01[0125][0-9]{8}$/;
+            
+            if (errorDiv) {
+                if (input.value.length > 0 && input.value.length < 11) {
+                    errorDiv.style.display = 'block';
+                    errorDiv.innerText = 'رقم الموبايل يجب أن يكون 11 رقماً';
+                } else if (input.value.length === 11 && !pattern.test(input.value)) {
+                    errorDiv.style.display = 'block';
+                    errorDiv.innerText = 'الرقم غير صحيح';
+                } else {
+                    errorDiv.style.display = 'none';
+                    errorDiv.innerText = '';
+                }
+            }
+        }
+    </script>
+}

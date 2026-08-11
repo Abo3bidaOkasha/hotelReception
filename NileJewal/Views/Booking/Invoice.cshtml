@@ -1,0 +1,182 @@
+﻿@model NileJewal.Models.Booking
+@{
+    Layout = null;
+    ViewData["Title"] = "فاتورة حجز";
+}<!DOCTYPE html><html lang="ar" dir="rtl"><head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>فاتورة حجز - @(Model?.GuestName ?? "عميل")</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
+    <style>
+        /* ضبط إعدادات الطباعة للورق A4 */
+        @@page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background-color: #f4f6f9;
+            color: #111;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .invoice-box {
+            width: 100%;
+            max-width: 800px;
+            min-height: 95vh;
+            margin: 20px auto;
+            background: #fff;
+            padding: 40px;
+            border: 2px solid #1a1a1a;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+
+        .table-invoice {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+            margin-bottom: 25px;
+        }
+
+        .table-invoice th, 
+        .table-invoice td {
+            border: 2px solid #222 !important;
+            padding: 12px 16px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .table-invoice th {
+            background-color: #f0f0f0 !important;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .signature-section {
+            margin-top: auto;
+            padding-top: 40px;
+        }
+
+        @@media print {
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                background-color: #fff;
+            }
+
+            .invoice-box {
+                margin: 0 auto;
+                border: 2px solid #000;
+                padding: 40px;
+                width: 100%;
+                max-width: 100%;
+                height: 100vh;
+                box-shadow: none;
+            }
+        }
+    </style></head><body>
+
+    <!-- زر الطباعة (يظهر للشاشة فقط ويختفي عند الطباعة) -->
+    <div class="text-center pt-3 pb-2 no-print">
+        <button onclick="window.print()" class="btn btn-dark px-5 py-2 fw-bold shadow">
+            🖨️ طباعة الفاتورة
+        </button>
+    </div>
+
+    <div class="invoice-box">
+        <div>
+            <!-- الهيدر: بيانات الشركة/الفندق واللوجو -->
+            <div class="d-flex justify-content-between align-items-center pb-3 border-bottom border-3 border-dark">
+                <!-- الكلام على اليمين -->
+                <div class="text-start">
+                    <h2 class="fw-bold mb-1 text-dark" style="font-size: 1.8rem;">فندق نايل جويل</h2>
+                    <p class="mb-0 fw-semibold text-secondary">س.ت : 19299</p>
+                    <p class="mb-0 fw-semibold text-secondary">ب.ض : 686 / 944 / 403</p>
+                </div>
+
+                <!-- اللوجو على الشمال -->
+                <div>
+                    <img src="~/images/logo.jfif" alt="Nile Jewel Logo" style="max-height: 95px; width: auto;" />
+                </div>
+            </div>
+
+            <!-- عنوان الفاتورة -->
+            <div class="text-center my-4">
+                <h1 class="fw-bold m-0" style="letter-spacing: 2px; font-size: 2.2rem; text-decoration: underline;">فـاتـورة</h1>
+            </div>
+
+            <!-- بيانات العميل والغرفة -->
+            <div class="row my-4 fs-5 fw-bold bg-light p-3 rounded border border-secondary mx-0">
+                <div class="col-7 text-start">
+                    <span>اسم العميل :</span> <span class="text-primary">@Model?.GuestName</span>
+                </div>
+                <div class="col-5 text-end">
+                    <span>رقم الغرفة :</span> <span class="text-primary">@(Model?.Room?.RoomNumber ?? "غير محدد")</span>
+                </div>
+            </div>
+
+            <!-- جدول تفاصيل الحجز والحساب -->
+            <table class="table-invoice">
+                <thead>
+                    <tr>
+                        <th style="width: 70%;">البيان</th>
+                        <th style="width: 30%;">القيمة (ج.م)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="fw-semibold">
+                            إقامة عن غرفة 
+                            @(string.IsNullOrEmpty(Model?.RoomType) ? "إسكان" : Model.RoomType)
+                            @if (Model?.RoomType != "MU" && !string.IsNullOrEmpty(Model?.OccupancyType))
+                            {
+                                <span>/ @Model.OccupancyType</span>
+                            }
+                            من يوم @Model?.CheckInDate.ToString("yyyy/MM/dd") إلى يوم @Model?.CheckOutDate.ToString("yyyy/MM/dd")
+                        </td>
+                        <td class="fw-bold fs-5">@((Model?.TotalAmount - (Model?.HasFood == true ? Model?.TotalFoodAmount : 0))?.ToString("N0"))</td>
+                    </tr>
+
+                    @if (Model != null && Model.HasFood && Model.TotalFoodAmount > 0)
+                    {
+                        <tr>
+                            <td class="fw-semibold">
+                                أغذية 
+                            </td>
+                            <td class="fw-bold fs-5">@Model.TotalFoodAmount.ToString("N0")</td>
+                        </tr>
+                    }
+
+                    <tr class="fw-bold" style="background-color: #fafafa;">
+                        <td class="text-end pe-4 fs-5 text-center">الإجمالي</td>
+                        <td class="fs-4 text-dark">@Model?.TotalAmount.ToString("N0")</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- التوقيعات في أسفل الصفحة -->
+        <div class="row text-center signature-section">
+            <div class="col-6">
+                <p class="fw-bold fs-5 mb-4">مسؤول الاستقبال</p>
+                <p class="fw-bold fs-6 text-dark mt-2">( @(string.IsNullOrEmpty(Model?.CreatedByUserName) ? "الاستقبال" : Model.CreatedByUserName) )</p>
+            </div>
+            <div class="col-6">
+                <p class="fw-bold fs-5 mb-1">التوقيع</p>
+                <p class="fw-bold fs-6 text-muted mb-3">مدير الحسابات</p>
+                <p class="fw-bold fs-6 text-dark">( أيمن عبدالوهاب )</p>
+            </div>
+        </div>
+
+    </div></body></html>

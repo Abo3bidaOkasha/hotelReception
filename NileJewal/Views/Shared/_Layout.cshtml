@@ -1,0 +1,144 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using NileJewal.Models
+@inject UserManager<ApplicationUser> UserManager
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - نظام إدارة الفندق</title>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <!-- خط Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="~/images/nileJewal.jfif" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="bg-light">
+    <header class="sticky-top">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+            <div class="container-fluid px-4">
+                <!-- اللوجو واسم الفندق -->
+                <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-white fs-4" asp-controller="Booking" asp-action="DailyGrid">
+                    <img src="~/images/logo.jfif"
+                         alt="Logo"
+                         style="height: 40px; width: auto; object-fit: contain;"
+                         onerror="this.onerror=null; this.src='/images/logo.jpg';" />
+                    <span> Nile Jewel </span>
+                </a>
+
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="navbar-collapse collapse d-lg-inline-flex justify-content-between">
+                    <!-- القائمة الرئيسية -->
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1">
+                        @if (User.Identity.IsAuthenticated)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link px-3 rounded-3" asp-controller="Booking" asp-action="DailyGrid">
+                                    <i class="bi bi-grid-3x3-gap-fill ms-1"></i> مخطط الغرف اليومي
+                                </a>
+                            </li>
+
+                            <!-- خيار البحث الشامل عن النزلاء لكل المستخدمين -->
+                            <li class="nav-item">
+                                <a class="nav-link px-3 rounded-3" asp-controller="GuestSearch" asp-action="Index">
+                                    <i class="bi bi-person-search ms-1"></i> بحث النزلاء
+                                </a>
+                            </li>
+                            <li class="nav-item">
+    <a class="nav-link" asp-controller="Booking" asp-action="CheckOutToday">مغادرات اليوم</a>
+</li>
+<li class="nav-item">
+    <a class="nav-link" asp-controller="Booking" asp-action="ArrivingToday">على وصول</a>
+</li>
+                            <li class="nav-item">
+    <a class="nav-link text-dark" asp-controller="Booking" asp-action="SearchAvailable">
+        <i class="fas fa-search me-1"></i> البحث عن المتاح
+    </a>
+</li>
+
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link px-3 rounded-3" asp-controller="Admin" asp-action="Dashboard">
+                                        <i class="bi bi-bar-chart-line-fill ms-1"></i> التقرير الشهري
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link px-3 rounded-3" asp-controller="Admin" asp-action="Users">
+                                        <i class="bi bi-people-fill ms-1"></i> إدارة الموظفين
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link px-3 rounded-3" asp-controller="Admin" asp-action="AuditLogs">
+                                        <i class="bi bi-journal-text ms-1"></i> سجل الحركات
+                                    </a>
+                                </li>
+                            }
+                        }
+                    </ul>
+
+                    <!-- بيانات تسجيل الدخول والبروفايل -->
+                    <ul class="navbar-nav align-items-center gap-2">
+                        @if (User.Identity.IsAuthenticated)
+                        {
+                            var currentUser = await UserManager.GetUserAsync(User);
+                            var displayName = currentUser?.FullName ?? User.Identity.Name;
+
+                            <li class="nav-item">
+                                <div class="bg-secondary bg-opacity-25 text-white px-3 py-1 rounded-pill d-flex align-items-center gap-2 border border-secondary">
+                                    <i class="bi bi-person-circle fs-5 text-warning"></i>
+                                    <span class="fw-bold fs-6">@displayName</span>
+                                </div>
+                            </li>
+                            <li class="nav-item">
+                                <form class="form-inline" asp-controller="Account" asp-action="Logout" method="post">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold">
+                                        <i class="bi bi-box-arrow-right ms-1"></i> خروج
+                                    </button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="btn btn-primary btn-sm rounded-pill px-4 fw-bold" asp-controller="Account" asp-action="Login">
+                                    <i class="bi bi-box-arrow-in-left ms-1"></i> تسجيل الدخول
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container-fluid py-4 px-4">
+        <main role="main">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted text-center py-3 mt-5 bg-white shadow-sm">
+        <div class="container">
+            <span class="fw-bold">
+                Created By <a href="https://iwtsp.com/201068048182" target="_blank" class="text-decoration-none">AboubidaOkasha</a> &copy; - @DateTime.Now.Year
+            </span>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,141 @@
+﻿@model IEnumerable<NileJewal.Controllers.UserViewModel>
+@{
+    ViewData["Title"] = "إدارة المستخدمين";
+}
+
+<div class="container mt-4" dir="rtl">
+
+    <!-- شريط تنبيهات الخطأ والنجاح -->
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show my-2" role="alert">
+            <strong>تنبيه: </strong> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show my-2" role="alert">
+            <strong>تم بنجاح! </strong> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="text-primary fw-bold">إدارة حسابات الموظفين</h3>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createUserModal">
+            + إضافة مستخدم جديد
+        </button>
+    </div>
+
+    <!-- جدول عرض المستخدمين -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover table-striped align-middle mb-0 text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="text-start ps-3">الاسم بالكامل</th>
+                        <th>البريد الإلكتروني</th>
+                        <th>الصلاحية / الدور</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var user in Model)
+                        {
+                            <tr>
+                                <td class="text-start ps-3 fw-bold">@user.FullName</td>
+                                <td>@user.Email</td>
+                                <td>
+                                    @if (user.Role == "Admin")
+                                    {
+                                        <span class="badge bg-danger fs-6">مدير نظام (Admin)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-primary fs-6">موظف استقبال (Receptionist)</span>
+                                    }
+                                </td>
+                                <td>
+                                    <form asp-controller="Admin" asp-action="DeleteUser" method="post" class="d-inline" onsubmit="return confirm('هل أنت تأكد من إلغاء وحذف حساب الموظف (@user.FullName)؟');">
+                                        <input type="hidden" name="id" value="@user.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">حذف الحساب</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">لا يوجد مستخدمين حالياً.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: نافذة إضافة مستخدم جديد -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;" dir="rtl">
+
+            <form asp-controller="Admin" asp-action="CreateUser" method="post">
+
+                <!-- رأس النافذة -->
+                <div class="modal-header text-white px-4 py-3 border-0 d-flex justify-content-between align-items-center" style="background-color: #059669;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-plus-fill fs-5"></i>
+                        <h5 class="modal-title fw-bold fs-5 mb-0" id="createUserModalLabel">إضافة حساب مستخدم جديد</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white m-0" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- جسم النافذة والحقول -->
+                <div class="modal-body p-4">
+
+                    <!-- الاسم بالكامل -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small mb-1 d-block text-end">الاسم بالكامل</label>
+                        <input type="text" name="fullName" class="form-control py-2 px-3 rounded-3 text-end" style="border-color: #cbd5e1; text-align: right !important;" placeholder="مثال: أحمد محمد" required />
+                    </div>
+
+                    <!-- البريد الإلكتروني -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small mb-1 d-block text-end">البريد الإلكتروني (اسم المستخدم)</label>
+                        <input type="email" name="email" class="form-control py-2 px-3 rounded-3 text-end" style="border-color: #cbd5e1; text-align: right !important;" placeholder="user@hotel.com" dir="rtl" required />
+                    </div>
+
+                    <!-- كلمة المرور -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary small mb-1 d-block text-end">كلمة المرور</label>
+                        <input type="password" name="password" class="form-control py-2 px-3 rounded-3 text-end" style="border-color: #cbd5e1; text-align: right !important;" placeholder="••••••••" dir="rtl" required />
+                    </div>
+
+                    <!-- الصلاحية / الدور -->
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold text-secondary small mb-1 d-block text-end">الصلاحية (الدور)</label>
+                        <select name="role" class="form-select py-2 px-3 rounded-3 text-end" style="border-color: #cbd5e1; text-align: right !important;" required>
+                            <option value="Receptionist" selected>موظف استقبال (Receptionist)</option>
+                            <option value="Admin">مدير نظام (Admin)</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <!-- أزرار التحكم -->
+                <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex justify-content-start gap-2">
+                    <button type="submit" class="btn text-white fw-semibold px-4 py-2 rounded-3" style="background-color: #059669;">إنشاء الحساب</button>
+                    <button type="button" class="btn btn-light fw-semibold px-4 py-2 rounded-3 text-secondary" data-bs-dismiss="modal">إلغاء</button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>

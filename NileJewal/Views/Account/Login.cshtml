@@ -1,0 +1,191 @@
+﻿@{
+    ViewData["Title"] = "تسجيل الدخول";
+}
+
+<style>
+    .login-container {
+        min-height: 75vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .login-card {
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        width: 100%;
+        max-width: 440px;
+    }
+
+    .login-header {
+        background-color: #1e293b;
+        color: #ffffff;
+        padding: 30px 24px 25px 24px;
+        text-align: center;
+    }
+
+    .hotel-logo-box {
+        width: 80px;
+        height: 80px;
+        background: #ffffff;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+        padding: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+        .hotel-logo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+        }
+
+    .form-control-icon {
+        position: relative;
+    }
+
+        .form-control-icon .input-icon {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1.1rem;
+            z-index: 2;
+        }
+
+        .form-control-icon .toggle-password {
+            position: absolute;
+            top: 50%;
+            left: 15px;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1.1rem;
+            cursor: pointer;
+            z-index: 2;
+            transition: color 0.2s;
+        }
+
+            .form-control-icon .toggle-password:hover {
+                color: #1e293b;
+            }
+
+        .form-control-icon .form-control {
+            padding-right: 45px;
+            padding-left: 45px;
+            height: 48px;
+            border-radius: 10px;
+            border-color: #cbd5e1;
+        }
+
+            .form-control-icon .form-control:focus {
+                border-color: #1e293b;
+                box-shadow: 0 0 0 0.25rem rgba(30, 41, 59, 0.15);
+            }
+
+    .btn-login {
+        background-color: #1e293b;
+        border-color: #1e293b;
+        color: white;
+        height: 48px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 1rem;
+        transition: all 0.2s ease-in-out;
+    }
+
+        .btn-login:hover {
+            background-color: #0f172a;
+            border-color: #0f172a;
+            color: white;
+        }
+
+    .demo-credentials {
+        background-color: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        padding: 14px 20px;
+        font-size: 0.85rem;
+        color: #64748b;
+        text-align: center;
+    }
+</style>
+
+<div class="login-container" dir="rtl">
+    <div class="login-card">
+
+        <!-- رأس الكارت مع اللوجو -->
+        <div class="login-header">
+            <div class="hotel-logo-box">
+                <img src="~/images/logo.jfif"
+                     alt="Nile Jewel Logo"
+                     onerror="this.onerror=null; this.src='/images/logo.jpg';" />
+            </div>
+            <h4 class="fw-bold mb-1">تسجيل الدخول للنظام</h4>
+            <p class="small opacity-75 mb-0">نظام إدارة فندق Nile Jewel</p>
+        </div>
+
+        <!-- جسم الكارت والنموذج -->
+        <div class="p-4">
+            <form method="post" asp-action="Login">
+                <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+
+                <div class="text-danger mb-3 small" asp-validation-summary="All"></div>
+
+                <!-- البريد الإلكتروني -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-secondary small mb-1">البريد الإلكتروني</label>
+                    <div class="form-control-icon">
+                        <i class="bi bi-envelope input-icon"></i>
+                        <input type="email" name="email" class="form-control" value="admin@hotel.com" required dir="ltr" style="text-align: right;" />
+                    </div>
+                </div>
+
+                <!-- كلمة المرور مع أيقونة الإظهار/الإخفاء -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold text-secondary small mb-1">كلمة المرور</label>
+                    <div class="form-control-icon">
+                        <i class="bi bi-key input-icon"></i>
+                        <input type="password" id="passwordInput" name="password" class="form-control"  required dir="ltr" style="text-align: right;" />
+                        <i class="bi bi-eye-slash toggle-password" id="togglePasswordIcon" onclick="togglePasswordVisibility()"></i>
+                    </div>
+                </div>
+
+                <!-- زر الدخول -->
+                <button type="submit" class="btn btn-login w-100">
+                    <i class="bi bi-box-arrow-in-left me-1"></i> دخول
+                </button>
+            </form>
+        </div>
+
+        <!-- أسفل الكارت -->
+        @* <div class="demo-credentials">
+            <i class="bi bi-info-circle me-1"></i> حساب الأدمن الافتراضي: <span class="fw-bold text-dark ms-1" dir="ltr">admin@hotel.com | Admin@123</span>
+        </div> *@
+
+    </div>
+</div>
+
+<!-- JavaScript لتشغيل إظهار/إخفاء كلمة المرور -->
+<script>
+    function togglePasswordVisibility() {
+        const passwordInput = document.getElementById('passwordInput');
+        const toggleIcon = document.getElementById('togglePasswordIcon');
+
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
+        }
+    }
+</script>

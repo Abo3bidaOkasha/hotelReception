@@ -1,0 +1,287 @@
+﻿@{
+    ViewData["Title"] = "لوحة التحكم المالية";
+
+    // تحويل وقراءة القيم بأمان لمنع استثناء Null Reference Exception
+    decimal dailyRevenue = Convert.ToDecimal(ViewBag.DailyRevenue ?? 0);
+    decimal totalRevenue = Convert.ToDecimal(ViewBag.TotalRevenue ?? 0);
+    decimal totalPaid = Convert.ToDecimal(ViewBag.TotalPaid ?? 0);
+    decimal totalRemaining = Convert.ToDecimal(ViewBag.TotalRemaining ?? 0);
+    int totalBookings = Convert.ToInt32(ViewBag.TotalBookingsCount ?? 0);
+
+    int selectedDay = Convert.ToInt32(ViewBag.SelectedDay ?? DateTime.Now.Day);
+    int selectedMonth = Convert.ToInt32(ViewBag.SelectedMonth ?? DateTime.Now.Month);
+    int selectedYear = Convert.ToInt32(ViewBag.SelectedYear ?? DateTime.Now.Year);
+}
+
+<!-- تنسيقات لوحة التحكم العصرية -->
+<style>
+    .dashboard-container {
+        font-family: inherit;
+    }
+
+    .filter-card {
+        background: #ffffff;
+        border-radius: 14px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+    }
+
+    .stat-card {
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+        transition: all 0.25s ease-in-out;
+        position: relative;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        /* شريط علوي ملون لكل كارت */
+        .stat-card.card-daily {
+            border-top: 4px solid #8b5cf6;
+        }
+
+        .stat-card.card-revenue {
+            border-top: 4px solid #10b981;
+        }
+
+        .stat-card.card-paid {
+            border-top: 4px solid #06b6d4;
+        }
+
+        .stat-card.card-remaining {
+            border-top: 4px solid #f59e0b;
+        }
+
+        .stat-card.card-bookings {
+            border-top: 4px solid #3b82f6;
+        }
+
+    .icon-box {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .icon-daily {
+        background-color: #f3e8ff;
+        color: #8b5cf6;
+    }
+
+    .icon-revenue {
+        background-color: #ecfdf5;
+        color: #10b981;
+    }
+
+    .icon-paid {
+        background-color: #ecfeff;
+        color: #06b6d4;
+    }
+
+    .icon-remaining {
+        background-color: #fffbeb;
+        color: #f59e0b;
+    }
+
+    .icon-bookings {
+        background-color: #eff6ff;
+        color: #3b82f6;
+    }
+
+    .stat-title {
+        color: #64748b;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .stat-value {
+        color: #0f172a;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .currency-badge {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        margin-right: 2px;
+    }
+
+    .filter-input {
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        padding: 6px 10px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .filter-select {
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        padding-right: 10px;
+        padding-left: 25px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+        .filter-input:focus, .filter-select:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+        }
+</style>
+
+<div class="container-fluid py-3 dashboard-container" dir="rtl">
+
+    <!-- شريط العنونة والفلترة -->
+    <div class="filter-card p-3 mb-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <div class="p-2 rounded-3 bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-bar-chart-line-fill fs-4"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0 fw-bold text-dark fs-5">لوحة التحكم والتقرير الشهري واليومي</h4>
+                    <small class="text-muted">متابعة الإيرادات اليومية والشهرية والحجوزات</small>
+                </div>
+            </div>
+
+            <!-- نموذج التصفية يشمل اليوم والشهر والسنة -->
+            <form method="get" asp-action="Dashboard" class="d-flex align-items-center gap-2 flex-wrap m-0">
+
+                <!-- اختيار اليوم -->
+                <div class="d-flex align-items-center gap-1">
+                    <label class="fw-bold text-secondary small text-nowrap">اليوم:</label>
+                    <select name="day" class="form-select filter-select" style="width: 80px;">
+                        @for (int i = 1; i <= 31; i++)
+                        {
+                            <option value="@i" selected="@(i == selectedDay)">@i</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- اختيار الشهر -->
+                <div class="d-flex align-items-center gap-1">
+                    <label class="fw-bold text-secondary small text-nowrap">الشهر:</label>
+                    <select name="month" class="form-select filter-select" style="width: 80px;">
+                        @for (int i = 1; i <= 12; i++)
+                        {
+                            <option value="@i" selected="@(i == selectedMonth)">@i</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- اختيار السنة -->
+                <div class="d-flex align-items-center gap-1">
+                    <label class="fw-bold text-secondary small text-nowrap">السنة:</label>
+                    <input type="number" name="year" value="@selectedYear" class="form-control filter-input" style="width: 90px;" />
+                </div>
+
+                <button type="submit" class="btn btn-primary d-flex align-items-center gap-2 px-3 fw-semibold" style="border-radius: 8px;">
+                    <i class="bi bi-funnel-fill"></i>
+                    <span>عرض التقرير</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- شبكة كروت الإحصائيات (5 كروت متناسقة) -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-5 g-3">
+
+        <!-- كارت إيرادات اليوم المحدد -->
+        <div class="col">
+            <div class="card stat-card card-daily p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="stat-title d-block mb-1">إيرادات يوم (@selectedDay/@selectedMonth)</span>
+                        <div class="stat-value text-purple">
+                            @dailyRevenue.ToString("N2") <span class="currency-badge">ج.م</span>
+                        </div>
+                    </div>
+                    <div class="icon-box icon-daily">
+                        <i class="bi bi-calendar2-check-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- كارت إجمالي الدخل الشهري -->
+        <div class="col">
+            <div class="card stat-card card-revenue p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="stat-title d-block mb-1">المتوقع تحصيله في الشهر</span>
+                        <div class="stat-value">
+                            @totalRevenue.ToString("N2") <span class="currency-badge">ج.م</span>
+                        </div>
+                    </div>
+                    <div class="icon-box icon-revenue">
+                        <i class="bi bi-wallet2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- كارت المبالغ المحصلة -->
+        <div class="col">
+            <div class="card stat-card card-paid p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="stat-title d-block mb-1">المبالغ المُحصلة خلال الشهر</span>
+                        <div class="stat-value">
+                            @totalPaid.ToString("N2") <span class="currency-badge">ج.م</span>
+                        </div>
+                    </div>
+                    <div class="icon-box icon-paid">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- كارت المبالغ المتبقية -->
+        <div class="col">
+            <div class="card stat-card card-remaining p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="stat-title d-block mb-1">المبالغ المتبقية</span>
+                        <div class="stat-value">
+                            @totalRemaining.ToString("N2") <span class="currency-badge">ج.م</span>
+                        </div>
+                    </div>
+                    <div class="icon-box icon-remaining">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- كارت عدد الحجوزات -->
+        <div class="col">
+            <div class="card stat-card card-bookings p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="stat-title d-block mb-1">عدد الحجوزات</span>
+                        <div class="stat-value">
+                            @totalBookings <span class="currency-badge">حجز</span>
+                        </div>
+                    </div>
+                    <div class="icon-box icon-bookings">
+                        <i class="bi bi-journal-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

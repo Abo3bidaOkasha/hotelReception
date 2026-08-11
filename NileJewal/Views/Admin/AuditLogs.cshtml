@@ -1,0 +1,228 @@
+﻿@model IEnumerable<NileJewal.Models.AuditLog>
+
+@{
+    ViewData["Title"] = "سجل التعديلات والحركات";
+}
+
+<style>
+    .audit-container {
+        font-family: inherit;
+    }
+
+    .card-custom {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
+    }
+
+    .table-custom {
+        vertical-align: middle;
+        font-size: 0.92rem;
+    }
+
+        .table-custom th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            white-space: nowrap;
+            border-bottom: 2px solid #e2e8f0;
+            padding: 12px 16px;
+        }
+
+        .table-custom td {
+            padding: 12px 16px;
+            color: #334155;
+        }
+
+    /* Badges لأنواع العمليات */
+    .badge-action {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.82rem;
+        display: inline-block;
+    }
+
+    .action-create {
+        background-color: #dcfce7;
+        color: #15803d;
+    }
+
+    .action-update {
+        background-color: #fef3c7;
+        color: #b45309;
+    }
+
+    .action-delete {
+        background-color: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .action-move {
+        background-color: #e0e7ff;
+        color: #4338ca;
+    }
+
+    .action-default {
+        background-color: #f1f5f9;
+        color: #475569;
+    }
+
+    /* تنسيق نصوص التفاصيل */
+    .details-box {
+        line-height: 1.6;
+        word-break: break-word;
+    }
+
+    .change-arrow {
+        color: #94a3b8;
+        margin: 0 4px;
+        font-weight: bold;
+    }
+
+    .user-badge {
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 600;
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: 1px solid #bfdbfe;
+    }
+
+    .date-text {
+        font-size: 0.85rem;
+        color: #64748b;
+        white-space: nowrap;
+        direction: ltr;
+        text-align: right;
+    }
+</style>
+
+<div class="container-fluid py-4 audit-container" dir="rtl">
+
+    <!-- الهيدر والبحث -->
+    <div class="card-custom p-4 mb-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="p-3 rounded-3 bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-journal-text fs-3"></i>
+                </div>
+                <div>
+                    <h3 class="mb-0 fw-bold text-dark fs-4">سجل الحركات والتعديلات</h3>
+                    <small class="text-muted">متابعة كافة العمليات والتغييرات المجراة بواسطة الموظفين</small>
+                </div>
+            </div>
+
+            <!-- حقل البحث السريع -->
+            <div style="min-width: 280px;">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-start-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="searchInput" class="form-control bg-light border-end-0" placeholder="بحث في السجل..." onkeyup="filterTable()">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الجدول -->
+    <div class="card-custom p-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle table-custom mb-0" id="auditTable">
+                <thead>
+                    <tr style="text-align:center">
+                        <th style="width: 50px;">#</th>
+                        <th style="width: 200px;">اسم الموظف</th>
+                        <th style="width: 130px;">نوع العملية</th>
+                        <th style="width: 100px;">الجدول</th>
+                        <th>التفاصيل والتغييرات</th>
+                        <th style="width: 170px;" class="text-end">التاريخ والوقت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        // البدء بإجمالي عدد العناصر
+                        int index = Model.Count();
+
+                        foreach (var log in Model)
+                        {
+                            // تحديد ألوان الشارات حسب نوع العملية
+                            string actionClass = "action-default";
+                            string actionName = log.Action ?? "عملية";
+
+                            if (actionName.Contains("إضافة") || actionName.Contains("إنشاء")) { actionClass = "action-create"; }
+                            else if (actionName.Contains("تعديل")) { actionClass = "action-update"; }
+                            else if (actionName.Contains("حذف")) { actionClass = "action-delete"; }
+                            else if (actionName.Contains("نقل")) { actionClass = "action-move"; }
+
+                            // تحسين تنسيق نص التفاصيل
+                            string formattedDetails = log.Details ?? "";
+                            if (!string.IsNullOrEmpty(formattedDetails))
+                            {
+                                formattedDetails = formattedDetails
+                                    .Replace("➔", "<i class='bi bi-arrow-left change-arrow'></i>")
+                                    .Replace("←", "<i class='bi bi-arrow-left change-arrow'></i>");
+                            }
+
+                            <tr>
+                                <td class="fw-bold text-secondary text-center">@index</td>
+                                <td>
+                                    <span class="user-badge">
+                                        <i class="bi bi-person-fill me-1"></i> @(log.UserName ?? "غير معروف")
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge-action @actionClass">@actionName</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark border fw-normal">@(log.EntityName ?? "عام")</span>
+                                </td>
+                                <td>
+                                    <div class="details-box">
+                                        @Html.Raw(formattedDetails)
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <div class="date-text">
+                                        <i class="bi bi-clock me-1"></i> @log.Timestamp.ToString("yyyy/MM/dd - hh:mm tt")
+                                    </div>
+                                </td>
+                            </tr>
+
+                            // خصم 1 للدورة التالية
+                            index--;
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                لا توجد حركات مسجلة حالياً.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- سكريبت الفلترة السريعة -->
+<script>
+    function filterTable() {
+        var input = document.getElementById("searchInput");
+        var filter = input.value.toLowerCase();
+        var table = document.getElementById("auditTable");
+        var tr = table.getElementsByTagName("tr");
+
+        for (var i = 1; i < tr.length; i++) {
+            var text = tr[i].innerText.toLowerCase();
+            if (text.indexOf(filter) > -1) {
+                tr[i].style.display = "";
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+    }
+</script>

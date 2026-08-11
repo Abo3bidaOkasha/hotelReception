@@ -1,0 +1,746 @@
+﻿@using System.Globalization
+@using System.Text.Encodings.Web
+@model IEnumerable<NileJewal.Models.Room>
+@{
+    ViewData["Title"] = "مخطط الغرف اليومي";
+    DateTime selectedDate = ViewBag.SelectedDate;
+}
+
+<div class="container-fluid mt-3" dir="rtl">
+
+    <!-- شريط التنبيهات والرسائل -->
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show my-2 rounded-3 shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill ms-2"></i>
+            <strong>تنبيه: </strong> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show my-2 rounded-3 shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill ms-2"></i>
+            <strong>تم بنجاح! </strong> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- هيدر اختيار التاريخ والتنقل -->
+    <div class="card shadow-sm border-0 mb-4 bg-white rounded-3">
+        <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 py-3">
+            <h4 class="m-0 fw-bold text-primary d-flex align-items-center gap-2">
+                <i class="bi bi-calendar-event-fill text-warning"></i>
+                حجز غرف عن يوم: <span class="text-dark">@selectedDate.ToString("yyyy/MM/dd")</span>
+            </h4>
+            <!--zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-->
+            <!--zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-->
+            <form method="get" asp-controller="Booking" asp-action="DailyGrid" class="d-flex align-items-center gap-2">
+                <a asp-controller="Booking" asp-action="DailyGrid" asp-route-date="@selectedDate.AddDays(-1).ToString("yyyy-MM-dd")" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+                    <i class="bi bi-chevron-right"></i> السابق
+                </a>
+                <input type="date" name="date" class="form-control form-control-sm rounded-pill px-3 border-secondary" value="@selectedDate.ToString("yyyy-MM-dd")" onchange="this.form.submit()" style="max-width: 160px;" />
+                <a asp-controller="Booking" asp-action="DailyGrid" asp-route-date="@selectedDate.AddDays(1).ToString("yyyy-MM-dd")" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+                    التالي <i class="bi bi-chevron-left"></i>
+                </a>
+            </form>
+        </div>
+    </div>
+
+    <!-- شبكة الغرف -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4">
+        @foreach (var room in Model)
+        {
+            var bookingsList = room.Bookings?.ToList() ?? new List<NileJewal.Models.Booking>();
+            bool isOccupied = bookingsList.Any();
+
+            var muBooking = bookingsList.FirstOrDefault(b => b.RoomType == "MU");
+            var housingBooking = bookingsList.FirstOrDefault(b => b.RoomType != "MU");
+
+            var primaryBooking = muBooking ?? bookingsList.FirstOrDefault();
+            bool hasDoubleBooking = muBooking != null && housingBooking != null;
+            bool canAddHousingBooking = muBooking != null && housingBooking == null;
+
+            string headerBgClass = !isOccupied ? "bg-success text-white" : (hasDoubleBooking ? "bg-warning text-dark" : "bg-danger text-white");
+            string badgeBgClass = !isOccupied ? "bg-white text-success" : (hasDoubleBooking ? "bg-dark text-warning" : "bg-white text-danger");
+            string statusText = !isOccupied ? "متاحة" : (hasDoubleBooking ? "MU + إسكان" : "محجوزة");
+
+            <div class="col">
+                <div class="card h-100 shadow-sm border-0 rounded-3 custom-room-card">
+
+                    <!-- رأس الكارت -->
+                    <div class="card-header border-0 d-flex justify-content-between align-items-center py-2 px-3 @headerBgClass">
+                        <span class="fw-bold fs-5">
+                            <i class="bi bi-door-closed-fill ms-1"></i> غرفة رقم: @room.RoomNumber
+                        </span>
+                        <span class="badge @badgeBgClass fw-bold rounded-pill px-3">
+                            @statusText
+                        </span>
+                    </div>
+
+                    <!-- جسم الكارت -->
+                    <div class="card-body p-3 d-flex flex-column justify-content-between bg-white">
+                        @if (isOccupied && primaryBooking != null)
+                        {
+                            <!-- الوجه الأول: حجز الـ MU أو الحجز الرئيسي -->
+                            <div id="booking-side-primary-@room.Id" class="booking-side">
+                                @if (hasDoubleBooking)
+                                {
+                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                        <span class="badge bg-danger">حجز 1 (MU)</span>
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0 fs-7 fw-bold" onclick="toggleRoomView(@room.Id, 'secondary')">
+                                            الإسكان <i class="bi bi-chevron-left"></i>
+                                        </button>
+                                    </div>
+                                }
+
+                                @{
+                                    var pNights = (int)(primaryBooking.CheckOutDate - primaryBooking.CheckInDate).TotalDays;
+                                    if (pNights <= 0) pNights = 1;
+                                }
+
+                                <ul class="list-group list-group-flush p-0 mb-3 small fs-6">
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                        <i class="bi bi-person-fill text-primary fs-5"></i>
+                                        <strong class="text-dark">الاسم:</strong>
+                                        <span class="text-secondary fw-semibold text-truncate">@primaryBooking.GuestName</span>
+                                    </li>
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                        <i class="bi bi-telephone-fill text-success fs-6"></i>
+                                        <strong class="text-dark">موبايل:</strong>
+                                        <span class="text-secondary dir-ltr">@primaryBooking.GuestPhone</span>
+                                    </li>
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                        <i class="bi bi-house-door-fill text-primary fs-6"></i>
+                                        <strong class="text-dark">نوع الغرفة:</strong>
+                                        <span class="badge bg-secondary">@(string.IsNullOrEmpty(primaryBooking.RoomType) ? "إسكان" : primaryBooking.RoomType)</span>
+                                    </li>
+
+                                    @if (primaryBooking.RoomType != "MU")
+                                    {
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                            <i class="bi bi-people-fill text-info fs-6"></i>
+                                            <strong class="text-dark">عدد الأفراد:</strong>
+                                            <span class="badge bg-info text-dark">@(string.IsNullOrEmpty(primaryBooking.OccupancyType) ? "سنجل" : primaryBooking.OccupancyType)</span>
+                                        </li>
+                                    }
+
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                        <i class="bi bi-egg-fried text-warning fs-6"></i>
+                                        @* <strong class="text-dark">الأغذية:</strong>
+                                        <span class="text-secondary">@(string.IsNullOrEmpty(primaryBooking.MealType) ? "بدون وجبات" : primaryBooking.MealType)</span> *@
+                                    <strong class="text-dark">الأغذية:</strong>
+    <span class="text-secondary">@(primaryBooking.HasFood ? $"{primaryBooking.DailyFoodAmount} ج.م" : "افطار فقط")</span>
+                                        </li>
+
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                        <i class="bi bi-calendar-check-fill text-info fs-6"></i>
+                                        <strong class="text-dark">الوصول:</strong>
+                                        <span class="text-secondary">@primaryBooking.CheckInDate.ToString("yyyy/MM/dd")</span>
+                                    </li>
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                        <i class="bi bi-calendar-x-fill text-warning fs-6"></i>
+                                        <strong class="text-dark">المغادرة:</strong>
+                                        <span class="text-secondary">@primaryBooking.CheckOutDate.ToString("yyyy/MM/dd")</span>
+                                    </li>
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                        <i class="bi bi-moon-stars-fill text-primary fs-6"></i>
+                                        <strong class="text-dark">الليالي:</strong>
+                                        <span class="badge bg-light text-dark border">@pNights ليالٍ</span>
+                                    </li>
+
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 my-1"><hr class="my-1 border-secondary opacity-25" /></li>
+
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center justify-content-between">
+                                        <span><i class="bi bi-cash-stack text-success ms-1"></i><strong>الإجمالي:</strong></span>
+                                        <span class="fw-bold text-dark">@primaryBooking.TotalAmount.ToString("N2") ج.م</span>
+                                    </li>
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center justify-content-between">
+                                        <span><i class="bi bi-exclamation-circle-fill text-danger ms-1"></i><strong>المتبقي:</strong></span>
+                                        <span class="fw-bold text-danger bg-danger bg-opacity-10 px-2 py-1 rounded">@primaryBooking.RemainingAmount.ToString("N2") ج.م</span>
+                                    </li>
+
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-start gap-2 mt-1">
+                                        <i class="bi bi-sticky-fill text-warning fs-6 mt-1"></i>
+                                        <small class="text-muted bg-light p-2 rounded w-100 border">
+                                            <strong>الملاحظات:</strong> @(string.IsNullOrWhiteSpace(primaryBooking.Notes) ? "لا يوجد" : primaryBooking.Notes)
+                                        </small>
+                                    </li>
+
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-1 text-muted small mt-2">
+                                        <i class="bi bi-person-badge ms-1"></i>
+                                        <span>الموظف: </span>
+                                        <span class="fw-bold text-dark">@primaryBooking.CreatedByUserName</span>
+                                    </li>
+                                </ul>
+
+                                <!-- أزرار الإجراءات للوجه الأول -->
+                                @if (canAddHousingBooking)
+                                {
+                                    <button style="width: 100%;" class="btn btn-primary btn-sm rounded-pill px-2 shadow-sm fw-bold mb-2"
+                                            onclick="openCreateModal(@room.Id, '@room.RoomNumber')"
+                                            title="إضافة حجز إسكان بعد الـ MU">
+                                        <i class="bi bi-plus-circle-fill"></i> حجز اسكان بعد الميكب
+                                    </button>
+                                }
+                                <div class="d-flex align-items-center gap-1 pt-2 border-top flex-wrap">
+
+                                    <a asp-controller="Booking" asp-action="Invoice" asp-route-id="@primaryBooking.Id" target="_blank" class="btn btn-outline-dark btn-sm rounded-pill px-2 shadow-sm" title="طباعة الفاتورة">
+                                        <i class="bi bi-printer-fill"></i>
+                                    </a>
+
+                                    <button class="btn btn-warning btn-sm flex-fill fw-bold rounded-pill shadow-sm"
+                                            data-id="@primaryBooking.Id"
+                                            data-room-id="@primaryBooking.RoomId"
+                                            data-guest-name="@primaryBooking.GuestName"
+                                            data-guest-phone="@primaryBooking.GuestPhone"
+                                            data-room-type="@primaryBooking.RoomType"
+                                            data-occupancy-type="@primaryBooking.OccupancyType"
+                                            data-meal-type="@primaryBooking.MealType"
+                                            data-has-food="@primaryBooking.HasFood.ToString().ToLower()"
+                                            data-daily-food="@primaryBooking.DailyFoodAmount.ToString(CultureInfo.InvariantCulture)"
+                                            data-price="@primaryBooking.PricePerNight.ToString(CultureInfo.InvariantCulture)"
+                                            data-paid="@primaryBooking.PaidAmount.ToString(CultureInfo.InvariantCulture)"
+                                            data-receipt="@primaryBooking.ReceiptNumber"
+                                            data-check-in="@primaryBooking.CheckInDate.ToString("yyyy-MM-dd")"
+                                            data-check-out="@primaryBooking.CheckOutDate.ToString("yyyy-MM-dd")"
+                                            data-notes="@primaryBooking.Notes"
+                                            onclick="openEditModalFromButton(this)">
+                                        <i class="bi bi-pencil-square"></i> تعديل
+                                    </button>
+
+                                    <button class="btn btn-info btn-sm text-white flex-fill fw-bold rounded-pill shadow-sm"
+                                            data-booking-id="@primaryBooking.Id"
+                                            data-room-number="@room.RoomNumber"
+                                            data-guest-name="@primaryBooking.GuestName"
+                                            onclick="openTransferModalFromButton(this)">
+                                        <i class="bi bi-arrow-left-right"></i> نقل
+                                    </button>
+
+                                    <form asp-controller="Booking" asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('هل أنت تأكد من حذف الحجز؟');">
+                                        <input type="hidden" name="id" value="@primaryBooking.Id" />
+                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2" title="حذف">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- الوجه الثاني: حجز الإسكان الجديد -->
+                            @if (hasDoubleBooking && housingBooking != null)
+                            {
+                                <div id="booking-side-secondary-@room.Id" class="booking-side d-none">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0 fs-7 fw-bold" onclick="toggleRoomView(@room.Id, 'primary')">
+                                            <i class="bi bi-chevron-right"></i> الـ MU
+                                        </button>
+                                        <span class="badge bg-success">حجز 2 (إسكان)</span>
+                                    </div>
+
+                                    @{
+                                        var hNights = (int)(housingBooking.CheckOutDate - housingBooking.CheckInDate).TotalDays;
+                                        if (hNights <= 0) hNights = 1;
+                                    }
+
+                                    <ul class="list-group list-group-flush p-0 mb-3 small fs-6">
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                            <i class="bi bi-person-fill text-primary fs-5"></i>
+                                            <strong class="text-dark">الاسم:</strong>
+                                            <span class="text-secondary fw-semibold text-truncate">@housingBooking.GuestName</span>
+                                        </li>
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                            <i class="bi bi-telephone-fill text-success fs-6"></i>
+                                            <strong class="text-dark">موبايل:</strong>
+                                            <span class="text-secondary dir-ltr">@housingBooking.GuestPhone</span>
+                                        </li>
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                            <i class="bi bi-house-door-fill text-primary fs-6"></i>
+                                            <strong class="text-dark">نوع الغرفة:</strong>
+                                            <span class="badge bg-secondary">@(string.IsNullOrEmpty(housingBooking.RoomType) ? "إسكان" : housingBooking.RoomType)</span>
+                                        </li>
+
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                            <i class="bi bi-people-fill text-info fs-6"></i>
+                                            <strong class="text-dark">عدد الأفراد:</strong>
+                                            <span class="badge bg-info text-dark">@(string.IsNullOrEmpty(housingBooking.OccupancyType) ? "سنجل" : housingBooking.OccupancyType)</span>
+                                        </li>
+
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                            <i class="bi bi-egg-fried text-warning fs-6"></i>
+                                            <strong class="text-dark">الأغذية:</strong>
+                                            <span class="text-secondary">@(string.IsNullOrEmpty(housingBooking.MealType) ? "بدون وجبات" : housingBooking.MealType)</span>
+                                        </li>
+
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                            <i class="bi bi-calendar-check-fill text-info fs-6"></i>
+                                            <strong class="text-dark">الوصول:</strong>
+                                            <span class="text-secondary">@housingBooking.CheckInDate.ToString("yyyy/MM/dd")</span>
+                                        </li>
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                            <i class="bi bi-calendar-x-fill text-warning fs-6"></i>
+                                            <strong class="text-dark">المغادرة:</strong>
+                                            <span class="text-secondary">@housingBooking.CheckOutDate.ToString("yyyy/MM/dd")</span>
+                                        </li>
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                            <i class="bi bi-moon-stars-fill text-primary fs-6"></i>
+                                            <strong class="text-dark">الليالي:</strong>
+                                            <span class="badge bg-light text-dark border">@hNights ليالٍ</span>
+                                        </li>
+
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 my-1"><hr class="my-1 border-secondary opacity-25" /></li>
+
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center justify-content-between">
+                                            <span><i class="bi bi-cash-stack text-success ms-1"></i><strong>الإجمالي:</strong></span>
+                                            <span class="fw-bold text-dark">@housingBooking.TotalAmount.ToString("N2") ج.م</span>
+                                        </li>
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center justify-content-between">
+                                            <span><i class="bi bi-exclamation-circle-fill text-danger ms-1"></i><strong>المتبقي:</strong></span>
+                                            <span class="fw-bold text-danger bg-danger bg-opacity-10 px-2 py-1 rounded">@housingBooking.RemainingAmount.ToString("N2") ج.م</span>
+                                        </li>
+
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-start gap-2 mt-1">
+                                            <i class="bi bi-sticky-fill text-warning fs-6 mt-1"></i>
+                                            <small class="text-muted bg-light p-2 rounded w-100 border">
+                                                <strong>الملاحظات:</strong> @(string.IsNullOrWhiteSpace(housingBooking.Notes) ? "لا يوجد" : housingBooking.Notes)
+                                            </small>
+                                        </li>
+
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-1 text-muted small mt-2">
+                                            <i class="bi bi-person-badge ms-1"></i>
+                                            <span>الموظف: </span>
+                                            <span class="fw-bold text-dark">@housingBooking.CreatedByUserName</span>
+                                        </li>
+                                    </ul>
+
+                                    <!-- أزرار الإجراءات للوجه الثاني -->
+                                    <div class="d-flex align-items-center gap-1 pt-2 border-top flex-wrap">
+                                        <a asp-controller="Booking" asp-action="Invoice" asp-route-id="@housingBooking.Id" target="_blank" class="btn btn-outline-dark btn-sm rounded-pill px-2 shadow-sm" title="طباعة الفاتورة">
+                                            <i class="bi bi-printer-fill"></i>
+                                        </a>
+
+                                        <button class="btn btn-warning btn-sm flex-fill fw-bold rounded-pill shadow-sm"
+                                                data-id="@housingBooking.Id"
+                                                data-room-id="@housingBooking.RoomId"
+                                                data-guest-name="@housingBooking.GuestName"
+                                                data-guest-phone="@housingBooking.GuestPhone"
+                                                data-room-type="@housingBooking.RoomType"
+                                                data-occupancy-type="@housingBooking.OccupancyType"
+                                                data-meal-type="@housingBooking.MealType"
+                                                data-has-food="@housingBooking.HasFood.ToString().ToLower()"
+                                                data-daily-food="@housingBooking.DailyFoodAmount.ToString(CultureInfo.InvariantCulture)"
+                                                data-price="@housingBooking.PricePerNight.ToString(CultureInfo.InvariantCulture)"
+                                                data-paid="@housingBooking.PaidAmount.ToString(CultureInfo.InvariantCulture)"
+                                                data-receipt="@housingBooking.ReceiptNumber"
+                                                data-check-in="@housingBooking.CheckInDate.ToString("yyyy-MM-dd")"
+                                                data-check-out="@housingBooking.CheckOutDate.ToString("yyyy-MM-dd")"
+                                                data-notes="@housingBooking.Notes"
+                                                onclick="openEditModalFromButton(this)">
+                                            <i class="bi bi-pencil-square"></i> تعديل
+                                        </button>
+
+                                        <button class="btn btn-info btn-sm text-white flex-fill fw-bold rounded-pill shadow-sm"
+                                                data-booking-id="@housingBooking.Id"
+                                                data-room-number="@room.RoomNumber"
+                                                data-guest-name="@housingBooking.GuestName"
+                                                onclick="openTransferModalFromButton(this)">
+                                            <i class="bi bi-arrow-left-right"></i> نقل
+                                        </button>
+
+                                        <form asp-controller="Booking" asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('هل أنت تأكد من حذف الحجز؟');">
+                                            <input type="hidden" name="id" value="@housingBooking.Id" />
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2" title="حذف">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <!-- حالة الغرفة المتاحة -->
+                            <div class="text-center py-5 my-auto">
+                                <i class="bi bi-check-circle-fill text-success display-4 mb-3 d-block opacity-75"></i>
+                                <span class="badge bg-success bg-opacity-10 text-success fs-6 px-3 py-2 rounded-pill mb-4 border border-success">الغرفة جاهزة للحجز</span>
+                                <div>
+                                    <button class="btn btn-primary w-100 fw-bold rounded-pill shadow-sm py-2" onclick="openCreateModal(@room.Id, '@room.RoomNumber')">
+                                        <i class="bi bi-plus-circle-fill ms-1"></i> حجز جديد
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modal 1: إضافة حجز جديد -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" dir="rtl">
+            <form asp-controller="Booking" asp-action="Create" method="post">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">إضافة حجز لغرفة <span id="modalRoomNumber"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="RoomId" id="modalRoomId" />
+
+                    <div class="mb-2">
+                        <label class="form-label">اسم النزيل</label>
+                        <input type="text" name="GuestName" class="form-control" required />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">رقم الموبايل</label>
+                        <input type="text" name="GuestPhone" id="guestPhoneInput" class="form-control" maxlength="11" oninput="validatePhone(this)" placeholder="010XXXXXXXX" required />
+                        <small id="phoneError" class="text-danger" style="display: none;"></small>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">نوع الغرفة</label>
+                        <select name="RoomType" id="createRoomType" class="form-select" onchange="toggleOccupancy('createRoomType', 'createOccupancyContainer')" required>
+                            <option value="">-- اختر نوع الغرفة --</option>
+                            <option value="إسكان">إسكان</option>
+                            <option value="MU">MU</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2" id="createOccupancyContainer">
+                        <label class="form-label">عدد الأفراد</label>
+                        <select name="OccupancyType" class="form-select">
+                            <option value="">-- اختر عدد الافراد --</option>
+                            <option value="سنجل">سنجل</option>
+                            <option value="دبل">دبل</option>
+                            <option value="تريبل">تريبل</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="form-check form-switch my-2">
+                            <input class="form-check-input" type="checkbox" name="HasFood" value="true" id="createHasFood" onchange="toggleFoodFields('createHasFood', 'createFoodDetails')">
+                            <input type="hidden" name="HasFood" value="false" />
+                            <label class="form-check-label fw-bold" for="createHasFood">شامل أغذية / وجبات؟</label>
+                        </div>
+                    </div>
+
+                    <div id="createFoodDetails" class="d-none border p-2 rounded bg-light mb-2">
+                        @* <div class="mb-2">
+                            <label class="form-label">نوع الوجبة / الأغذية</label>
+                            <select name="MealType" class="form-select">
+                                <option value="بدون وجبات">بدون وجبات</option>
+                                <option value="إفطار">إفطار</option>
+                                <option value="نصف إقامة (إفطار وعشاء)">نصف إقامة (إفطار وعشاء)</option>
+                                <option value="إقامة كاملة">إقامة كاملة</option>
+                            </select>
+                        </div> *@
+                        <div class="mb-2">
+                            <label class="form-label">تكلفة الأغذية اليومية</label>
+                            <input type="number" step="0.01" name="DailyFoodAmount" class="form-control" value="0" />
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label">سعر الليلة</label>
+                            <input type="number" step="0.01" name="PricePerNight" class="form-control" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">المبلغ المدفوع</label>
+                            <input type="number" step="0.01" name="PaidAmount" class="form-control" value="0" />
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">رقم الإيصال</label>
+                        <input type="text" name="ReceiptNumber" class="form-control" />
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label">تاريخ الوصول</label>
+                            <input type="date" name="CheckInDate" class="form-control" value="@selectedDate.ToString("yyyy-MM-dd")" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">تاريخ المغادرة</label>
+                            <input type="date" name="CheckOutDate" class="form-control" value="@selectedDate.AddDays(1).ToString("yyyy-MM-dd")" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">ملاحظات</label>
+                        <textarea name="Notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary fw-bold">حفظ الحجز</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: تعديل الحجز -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" dir="rtl">
+            <form asp-controller="Booking" asp-action="Edit" method="post">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold">تعديل بيانات الحجز</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="Id" id="editId" />
+                    <input type="hidden" name="RoomId" id="editRoomId" />
+
+                    <div class="mb-2">
+                        <label class="form-label">اسم النزيل</label>
+                        <input type="text" name="GuestName" id="editGuestName" class="form-control" required />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">رقم الموبايل</label>
+                        <input type="text" name="GuestPhone" id="editGuestPhone" class="form-control" required />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">نوع الغرفة</label>
+                        <select name="RoomType" id="editRoomType" class="form-select" onchange="toggleOccupancy('editRoomType', 'editOccupancyContainer')" required>
+                            <option value="إسكان">إسكان</option>
+                            <option value="MU">MU</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2" id="editOccupancyContainer">
+                        <label class="form-label">عدد الأفراد</label>
+                        <select name="OccupancyType" id="editOccupancyType" class="form-select">
+                            <option value="">-- اختر عدد الافراد --</option>
+                            <option value="سنجل">سنجل</option>
+                            <option value="دبل">دبل</option>
+                            <option value="تريبل">تريبل</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="form-check form-switch my-2">
+                            <input class="form-check-input" type="checkbox" name="HasFood" value="true" id="editHasFood" onchange="toggleFoodFields('editHasFood', 'editFoodDetails')">
+                            <input type="hidden" name="HasFood" value="false" />
+                            <label class="form-check-label fw-bold" for="editHasFood">شامل أغذية / وجبات؟</label>
+                        </div>
+                    </div>
+
+                    <div id="editFoodDetails" class="d-none border p-2 rounded bg-light mb-2">
+                        <div class="mb-2">
+                            <label class="form-label">نوع الوجبة / الأغذية</label>
+                            <select name="MealType" id="editMealType" class="form-select">
+                                <option value="بدون وجبات">بدون وجبات</option>
+                                <option value="إفطار">إفطار</option>
+                                <option value="نصف إقامة (إفطار وعشاء)">نصف إقامة (إفطار وعشاء)</option>
+                                <option value="إقامة كاملة">إقامة كاملة</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">تكلفة الأغذية اليومية</label>
+                            <input type="number" step="0.01" name="DailyFoodAmount" id="editDailyFood" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label">سعر الليلة</label>
+                            <input type="number" step="0.01" name="PricePerNight" id="editPrice" class="form-control" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">المبلغ المدفوع</label>
+                            <input type="number" step="0.01" name="PaidAmount" id="editPaid" class="form-control" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">رقم الإيصال</label>
+                        <input type="text" name="ReceiptNumber" id="editReceipt" class="form-control" />
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label">تاريخ الوصول</label>
+                            <input type="date" name="CheckInDate" id="editCheckIn" class="form-control" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">تاريخ المغادرة</label>
+                            <input type="date" name="CheckOutDate" id="editCheckOut" class="form-control" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">ملاحظات</label>
+                        <textarea name="Notes" id="editNotes" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-warning fw-bold">تعديل الحجز</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 3: نقل الحجز -->
+<div class="modal fade" id="transferModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" dir="rtl">
+            <form asp-controller="Booking" asp-action="Transfer" method="post">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">نقل حجز النزيل: <span id="transferGuestName"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="BookingId" id="transferBookingId" />
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الغرفة الحالية:</label>
+                        <span id="transferCurrentRoom" class="badge bg-secondary fs-6"></span>
+                    </div>
+
+                    <div class="mb-3">
+    <label class="form-label">اختر الغرفة الجديدة</label>
+    <select name="newRoomNumber" class="form-select" required>
+        <option value="">-- اختر الغرفة --</option>
+        @foreach (var room in Model)
+        {
+            <option value="@room.RoomNumber">غرفة رقم @room.RoomNumber</option>
+        }
+    </select>
+</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-info text-white fw-bold">تأكيد النقل</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // التبديل بين وجهي الكارت (MU والإسكان)
+        function toggleRoomView(roomId, targetSide) {
+            const primarySide = document.getElementById(`booking-side-primary-${roomId}`);
+            const secondarySide = document.getElementById(`booking-side-secondary-${roomId}`);
+
+            if (targetSide === 'secondary') {
+                if (primarySide) primarySide.classList.add('d-none');
+                if (secondarySide) secondarySide.classList.remove('d-none');
+            } else {
+                if (secondarySide) secondarySide.classList.add('d-none');
+                if (primarySide) primarySide.classList.remove('d-none');
+            }
+        }
+
+        // إظهار/إخفاء حقل عدد الأفراد بناءً على نوع الغرفة
+        function toggleOccupancy(typeSelectId, containerId) {
+            const select = document.getElementById(typeSelectId);
+            const container = document.getElementById(containerId);
+            if (select && container) {
+                if (select.value === 'MU') {
+                    container.classList.add('d-none');
+                } else {
+                    container.classList.remove('d-none');
+                }
+            }
+        }
+
+        // إظهار/إخفاء تفاصيل الأغذية
+        function toggleFoodFields(checkboxId, detailsId) {
+            const checkbox = document.getElementById(checkboxId);
+            const details = document.getElementById(detailsId);
+            if (checkbox && details) {
+                if (checkbox.checked) {
+                    details.classList.remove('d-none');
+                } else {
+                    details.classList.add('d-none');
+                }
+            }
+        }
+
+        // فتح مودال إضافة حجز جديد
+        function openCreateModal(roomId, roomNumber) {
+            document.getElementById('modalRoomId').value = roomId;
+            document.getElementById('modalRoomNumber').innerText = roomNumber;
+            
+            const modal = new bootstrap.Modal(document.getElementById('createModal'));
+            modal.show();
+        }
+
+        // فتح مودال تعديل الحجز وتعبئة البيانات (تم تصحيح جلب وتعيين الوجبات هنا)
+        function openEditModalFromButton(btn) {
+            const ds = btn.dataset;
+            document.getElementById('editId').value = ds.id;
+            document.getElementById('editRoomId').value = ds.roomId;
+            document.getElementById('editGuestName').value = ds.guestName;
+            document.getElementById('editGuestPhone').value = ds.guestPhone;
+            document.getElementById('editRoomType').value = ds.roomType;
+            document.getElementById('editOccupancyType').value = ds.occupancyType;
+            
+            const hasFood = ds.hasFood === 'true';
+            const editHasFoodCb = document.getElementById('editHasFood');
+            editHasFoodCb.checked = hasFood;
+            
+            // تعيين نوع الوجبة في القائمة المنسدلة بدقة
+            const mealTypeSelect = document.getElementById('editMealType');
+            if (ds.mealType && ds.mealType.trim() !== "") {
+                mealTypeSelect.value = ds.mealType;
+            } else {
+                mealTypeSelect.value = "بدون وجبات";
+            }
+
+            document.getElementById('editDailyFood').value = ds.dailyFood || 0;
+            document.getElementById('editPrice').value = ds.price;
+            document.getElementById('editPaid').value = ds.paid;
+            document.getElementById('editReceipt').value = ds.receipt || '';
+            document.getElementById('editCheckIn').value = ds.checkIn;
+            document.getElementById('editCheckOut').value = ds.checkOut;
+            document.getElementById('editNotes').value = ds.notes || '';
+
+            toggleOccupancy('editRoomType', 'editOccupancyContainer');
+            toggleFoodFields('editHasFood', 'editFoodDetails'); // تفعيل إظهار/إخفاء صندوق الأغذية بالاعتماد على الحالة
+
+            const modal = new bootstrap.Modal(document.getElementById('editModal'));
+            modal.show();
+        }
+
+        // فتح مودال النقل
+        function openTransferModalFromButton(btn) {
+            const ds = btn.dataset;
+            document.getElementById('transferBookingId').value = ds.bookingId;
+            document.getElementById('transferGuestName').innerText = ds.guestName;
+            document.getElementById('transferCurrentRoom').innerText = ds.roomNumber;
+
+            const modal = new bootstrap.Modal(document.getElementById('transferModal'));
+            modal.show();
+        }
+        function validatePhone(input) {
+    // منع أي حروف غير الأرقام
+    input.value = input.value.replace(/[^0-9]/g, '');
+    
+    var errorDiv = document.getElementById('phoneError');
+    var pattern = /^01[0125][0-9]{8}$/;
+    
+    if (input.value.length > 0 && input.value.length < 11) {
+        errorDiv.style.display = 'block';
+        errorDiv.innerText = 'رقم الموبايل يجب أن يكون 11 رقماً';
+    } else if (input.value.length === 11 && !pattern.test(input.value)) {
+        errorDiv.style.display = 'block';
+        errorDiv.innerText = 'الرقم غير صحيح';
+    } else {
+        errorDiv.style.display = 'none';
+        errorDiv.innerText = '';
+    }
+}
+    </script>
+}
