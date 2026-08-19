@@ -20,6 +20,15 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
+// إضافة إعدادات التوجيه لتسجيل الدخول مباشرة عند عدم وجود صلاحية أو تسجيل
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/Login";
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+    options.SlidingExpiration = true;
+});
+
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddControllersWithViews();
 
@@ -54,7 +63,7 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     try
     {
-        var context = services.GetRequiredService<ApplicationDbContext>(); // استبدل ApplicationDbContext باسم DbContext الخاص بك
+        var context = services.GetRequiredService<ApplicationDbContext>();
         context.Database.Migrate();
     }
     catch (Exception ex)
@@ -62,4 +71,5 @@ using (var scope = app.Services.CreateScope())
         // التعامل مع أي خطأ أثناء التطبيق
     }
 }
+
 app.Run();

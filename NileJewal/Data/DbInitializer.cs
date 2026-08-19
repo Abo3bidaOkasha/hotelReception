@@ -12,8 +12,8 @@ namespace NileJewal.Data
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
 
-            // 1. إنشاء الأدوار
-            string[] roleNames = { "Admin", "Receptionist" };
+            // 1. إنشاء الأدوار (تمت إضافة CService هنا)
+            string[] roleNames = { "Admin", "Receptionist", "CService" };
             foreach (var roleName in roleNames)
             {
                 if (!await roleManager.RoleExistsAsync(roleName))

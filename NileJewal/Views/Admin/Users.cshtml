@@ -1,9 +1,7 @@
 ﻿@model IEnumerable<NileJewal.Controllers.UserViewModel>
 @{
     ViewData["Title"] = "إدارة المستخدمين";
-}
-
-<div class="container mt-4" dir="rtl">
+}<div class="container mt-4" dir="rtl">
 
     <!-- شريط تنبيهات الخطأ والنجاح -->
     @if (TempData["Error"] != null)
@@ -54,6 +52,10 @@
                                     {
                                         <span class="badge bg-danger fs-6">مدير نظام (Admin)</span>
                                     }
+                                    else if (user.Role == "CService")
+                                    {
+                                        <span class="badge bg-warning text-dark fs-6">خدمة العملاء (CService)</span>
+                                    }
                                     else
                                     {
                                         <span class="badge bg-primary fs-6">موظف استقبال (Receptionist)</span>
@@ -77,11 +79,7 @@
                 </tbody>
             </table>
         </div>
-    </div>
-</div>
-
-<!-- Modal: نافذة إضافة مستخدم جديد -->
-<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    </div></div><!-- Modal: نافذة إضافة مستخدم جديد --><div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;" dir="rtl">
 
@@ -122,6 +120,7 @@
                         <label class="form-label fw-semibold text-secondary small mb-1 d-block text-end">الصلاحية (الدور)</label>
                         <select name="role" class="form-select py-2 px-3 rounded-3 text-end" style="border-color: #cbd5e1; text-align: right !important;" required>
                             <option value="Receptionist" selected>موظف استقبال (Receptionist)</option>
+                            <option value="CService">خدمة العملاء (CService)</option>
                             <option value="Admin">مدير نظام (Admin)</option>
                         </select>
                     </div>
@@ -137,5 +136,4 @@
             </form>
 
         </div>
-    </div>
-</div>
+    </div></div>

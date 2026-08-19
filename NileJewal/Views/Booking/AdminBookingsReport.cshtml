@@ -1,0 +1,119 @@
+﻿@model IEnumerable<NileJewal.Models.Booking>
+
+<div class="container mt-4" dir="rtl">
+    <div class="card shadow border-0">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">بيانات العملاء والحجوزات</h4>
+            
+            <!-- فورم التحكم في التاريخ (يعتمد على تاريخ الدخول) -->
+            <form method="get" asp-action="AdminBookingsReport" class="d-flex align-items-center gap-2">
+                <label class="text-white fw-bold mb-0">اختر تاريخ الدخول:</label>
+                <input type="date" name="date" value="@ViewBag.SelectedDate" class="form-control form-control-sm" onchange="this.form.submit()" />
+            </form>
+        </div>
+        
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped align-middle text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>رقم الغرفة</th>
+                            <th>اسم النزيل</th>
+                            <th>اسم الشركة</th>
+                            <th>رقم الموبايل</th>
+                            <th>نوع الحجز</th>
+                            <th>تاريخ الدخول</th>
+                            <th>تاريخ المغادرة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            foreach (var item in Model) {
+                            <tr>
+                                <td>@item.RoomId</td>
+                                <td class="fw-bold">@item.GuestName</td>
+                                <td>@item.ReceiptNumber</td>
+                                <td>@item.GuestPhone</td>
+                                <td>
+                                    <span class="badge @(item.RoomType == "MU" ? "bg-warning text-dark" : "bg-info")">
+                                        @item.RoomType
+                                    </span>
+                                </td>
+                                <td>@item.CheckInDate.ToString("yyyy-MM-dd")</td>
+                                <td>@item.CheckOutDate.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning" onclick="openEditModal(@item.Id, '@item.ReceiptNumber', '@item.GuestPhone', '@item.CheckInDate.ToString("yyyy-MM-dd")', '@item.CheckOutDate.ToString("yyyy-MM-dd")', '@item.RoomType')">
+                                        تعديل البيانات
+                                    </button>
+                                </td>
+                            </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" class="text-muted py-4">لا توجد أي حجوزات تبدأ في هذا التاريخ.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal التعديل -->
+<div class="modal fade" id="editAdminModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form asp-controller="Booking" asp-action="UpdateContactInfo" method="post" class="modal-content">
+            <input type="hidden" name="Id" id="editBookingId" />
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold">تعديل بيانات الحجز</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">اسم الشركة</label>
+                    <input type="text" name="CompanyName" id="editCompanyName" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">رقم الموبايل</label>
+                    <input type="text" name="GuestPhone" id="editGuestPhone" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">نوع الحجز</label>
+                    <select name="RoomType" id="editRoomType" class="form-control">
+                        <option value="إسكان">إسكان</option>
+                        <option value="MU">MU</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">تاريخ الدخول</label>
+                    <input type="date" name="CheckInDate" id="editCheckInDate" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">تاريخ المغادرة</label>
+                    <input type="date" name="CheckOutDate" id="editCheckOutDate" class="form-control" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openEditModal(id, company, phone, checkIn, checkOut, RoomType) {
+        document.getElementById('editBookingId').value = id;
+        document.getElementById('editCompanyName').value = company;
+        document.getElementById('editGuestPhone').value = phone;
+        document.getElementById('editCheckInDate').value = checkIn;
+        document.getElementById('editCheckOutDate').value = checkOut;
+        document.getElementById('editRoomType').value = RoomType;
+        new bootstrap.Modal(document.getElementById('editAdminModal')).show();
+    }
+</script>

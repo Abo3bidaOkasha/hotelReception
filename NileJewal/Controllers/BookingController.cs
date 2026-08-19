@@ -187,26 +187,9 @@ namespace NileJewal.Controllers
                 return RedirectToAction(nameof(DailyGrid), new { date = oldBooking.CheckInDate.ToString("yyyy-MM-dd") });
             }
 
-            // فحص التعارض عند التعديل (مع استثناء الحجز الحالي من الفحص)
-            var conflictingBookings = await _context.Bookings
-                .Where(b => b.RoomId == oldBooking.RoomId
-                       && b.Id != updatedBooking.Id
-                       && b.Status != BookingStatus.Canceled
-                       && updatedBooking.CheckInDate < b.CheckOutDate
-                       && updatedBooking.CheckOutDate > b.CheckInDate)
-                .ToListAsync();
-
-            if (conflictingBookings.Any())
+            if (updatedBooking.RoomId == 0)
             {
-                bool isMuOverHousingAllowed = conflictingBookings.Count == 1
-                                           && conflictingBookings.First().RoomType == "MU"
-                                           && updatedBooking.RoomType != "MU";
-
-                if (!isMuOverHousingAllowed)
-                {
-                    TempData["Error"] = "تعذر تعديل الحجز! التواريخ الجديدة تتعارض مع حجز آخر قائم للغرفة.";
-                    return RedirectToAction(nameof(DailyGrid), new { date = oldBooking.CheckInDate.ToString("yyyy-MM-dd") });
-                }
+                updatedBooking.RoomId = oldBooking.RoomId;
             }
 
             var nights = (int)(updatedBooking.CheckOutDate - updatedBooking.CheckInDate).TotalDays;
@@ -237,6 +220,7 @@ namespace NileJewal.Controllers
                              $"[المبلغ الإجمالي: {oldBooking.TotalAmount} ⬅️ {newTotalAmount}]، " +
                              $"[المدفوع: {oldBooking.PaidAmount} ⬅️ {updatedBooking.PaidAmount}]";
 
+            oldBooking.RoomId = updatedBooking.RoomId;
             oldBooking.GuestName = updatedBooking.GuestName;
             oldBooking.GuestPhone = updatedBooking.GuestPhone;
             oldBooking.RoomType = updatedBooking.RoomType;
@@ -349,6 +333,267 @@ namespace NileJewal.Controllers
                 await _context.SaveChangesAsync();
             }
             return RedirectToAction("ArrivingToday");
+        }
+
+        [Authorize(Roles = "Admin,Receptionist")]
+        [HttpGet]
+        public async Task<IActionResult> PrintDailyReport(DateTime? date)
+        {
+            var selectedDate = date ?? DateTime.Today;
+            ViewBag.SelectedDate = selectedDate;
+
+            // جلب الغرف مع الحجز النشط في هذا التاريخ بالذات
+            var rooms = await _context.Rooms
+                .Include(r => r.Bookings.Where(b => b.CheckInDate.Date <= selectedDate.Date && b.CheckOutDate.Date > selectedDate.Date && !b.IsCheckedOut))
+                .OrderBy(r => r.RoomNumber)
+                .ToListAsync();
+
+            return View(rooms);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExportDailyReportExcel(DateTime? date)
+        {
+            var selectedDate = date ?? DateTime.Today;
+
+            var rooms = await _context.Rooms
+                .Include(r => r.Bookings.Where(b => b.CheckInDate.Date <= selectedDate.Date && b.CheckOutDate.Date > selectedDate.Date && !b.IsCheckedOut))
+                .OrderBy(r => r.RoomNumber)
+                .ToListAsync();
+
+            var excelContent = new System.Text.StringBuilder();
+
+            excelContent.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+            excelContent.AppendLine("<?mso-application progid=\"Excel.Sheet\"?>");
+            excelContent.AppendLine("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"");
+            excelContent.AppendLine("          xmlns:o=\"urn:schemas-microsoft-com:office:office\"");
+            excelContent.AppendLine("          xmlns:x=\"urn:schemas-microsoft-com:office:excel\"");
+            excelContent.AppendLine("          xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"");
+            excelContent.AppendLine("          xmlns:html=\"http://www.w3.org/TR/REC-html40\">");
+
+            // تعريف التنسيقات (الخطوط، الحدود، الخلفيات)
+            excelContent.AppendLine(" <Styles>");
+            excelContent.AppendLine("  <Style ss:ID=\"Default\" ss:Name=\"Normal\">");
+            excelContent.AppendLine("   <Alignment ss:Vertical=\"Center\" ss:Horizontal=\"Center\"/>");
+            excelContent.AppendLine("   <Font ss:FontName=\"Cairo\" ss:Size=\"11\"/>");
+            excelContent.AppendLine("   <Borders/>");
+            excelContent.AppendLine("  </Style>");
+
+            // تنسيق العنوان الرئيسي
+            excelContent.AppendLine("  <Style ss:ID=\"TitleStyle\">");
+            excelContent.AppendLine("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>");
+            excelContent.AppendLine("   <Font ss:FontName=\"Cairo\" ss:Size=\"14\" ss:Bold=\"1\"/>");
+            excelContent.AppendLine("  </Style>");
+
+            // تنسيق رأس الجدول (Background رمادي فاتح + خطوط + غامق)
+            excelContent.AppendLine("  <Style ss:ID=\"HeaderStyle\">");
+            excelContent.AppendLine("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>");
+            excelContent.AppendLine("   <Font ss:FontName=\"Cairo\" ss:Size=\"11\" ss:Bold=\"1\"/>");
+            excelContent.AppendLine("   <Interior ss:Color=\"#E0E0E0\" ss:Pattern=\"Solid\"/>");
+            excelContent.AppendLine("   <Borders>");
+            excelContent.AppendLine("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>");
+            excelContent.AppendLine("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>");
+            excelContent.AppendLine("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>");
+            excelContent.AppendLine("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\"/>");
+            excelContent.AppendLine("   </Borders>");
+            excelContent.AppendLine("  </Style>");
+
+            // تنسيق خلايا الجدول العادية (بحدود واضحة وموسّطة)
+            excelContent.AppendLine("  <Style ss:ID=\"CellStyle\">");
+            excelContent.AppendLine("   <Alignment ss:Horizontal=\"Center\" ss:Vertical=\"Center\"/>");
+            excelContent.AppendLine("   <Font ss:FontName=\"Cairo\" ss:Size=\"11\"/>");
+            excelContent.AppendLine("   <Borders>");
+            excelContent.AppendLine("    <Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#D3D3D3\"/>");
+            excelContent.AppendLine("    <Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#D3D3D3\"/>");
+            excelContent.AppendLine("    <Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#D3D3D3\"/>");
+            excelContent.AppendLine("    <Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"1\" ss:Color=\"#D3D3D3\"/>");
+            excelContent.AppendLine("   </Borders>");
+            excelContent.AppendLine("  </Style>");
+            excelContent.AppendLine(" </Styles>");
+
+            excelContent.AppendLine(" <Worksheet ss:Name=\"تقرير الحجوزات اليومي\">");
+            excelContent.AppendLine("  <Table>");
+            excelContent.AppendLine("   <WorksheetOptions xmlns=\"urn:schemas-microsoft-com:office:excel\">");
+            excelContent.AppendLine("    <DisplayRightToLeft/>");
+            excelContent.AppendLine("   </WorksheetOptions>");
+
+            // العنوان
+            excelContent.AppendLine($"   <Row><Cell ss:StyleID=\"TitleStyle\" ss:MergeAcross=\"5\"><Data ss:Type=\"String\">تقرير الحجوزات اليومي - بتاريخ: {selectedDate:yyyy/MM/dd}</Data></Cell></Row>");
+            excelContent.AppendLine("   <Row></Row>");
+
+            // رؤوس الأعمدة بالتنسيق المطابق للورقة تماماً (من اليمين لليسار)
+            excelContent.AppendLine("   <Row>");
+            excelContent.AppendLine("    <Cell ss:StyleID=\"HeaderStyle\"><Data ss:Type=\"String\">رقم الغرفة</Data></Cell>");
+            excelContent.AppendLine("    <Cell ss:StyleID=\"HeaderStyle\"><Data ss:Type=\"String\">دخول IN</Data></Cell>");
+            excelContent.AppendLine("    <Cell ss:StyleID=\"HeaderStyle\"><Data ss:Type=\"String\">خروج OUT</Data></Cell>");
+            excelContent.AppendLine("    <Cell ss:StyleID=\"HeaderStyle\"><Data ss:Type=\"String\">اسم النزيل</Data></Cell>");
+            excelContent.AppendLine("    <Cell ss:StyleID=\"HeaderStyle\"><Data ss:Type=\"String\">المرافقين</Data></Cell>");
+            excelContent.AppendLine("    <Cell ss:StyleID=\"HeaderStyle\"><Data ss:Type=\"String\">نوع الغرفة</Data></Cell>");
+            excelContent.AppendLine("   </Row>");
+
+            foreach (var room in rooms)
+            {
+                var activeBooking = room.Bookings?.FirstOrDefault();
+                string roomNum = room.RoomNumber ?? "";
+                string checkIn = activeBooking != null ? activeBooking.CheckInDate.ToString("yyyy/MM/dd") : "";
+                string checkOut = activeBooking != null ? activeBooking.CheckOutDate.ToString("yyyy/MM/dd") : "";
+                string guestName = activeBooking != null ? activeBooking.GuestName : "";
+                string companions = "";
+
+                // تحديد نوع الغرفة: من 401 إلى 408 نايل فيو والباقي خلفي
+                string roomViewType = "خلفي";
+                if (int.TryParse(roomNum, out int roomNo))
+                {
+                    if (roomNo >= 401 && roomNo <= 408 )
+                    {
+                        roomViewType = "نايل فيو";
+                    }
+                    if (roomNo == 432)
+                    {
+                        roomViewType = "نايل فيو";
+                    }
+                }
+
+                excelContent.AppendLine("   <Row>");
+                excelContent.AppendLine($"    <Cell ss:StyleID=\"CellStyle\"><Data ss:Type=\"String\">{roomNum}</Data></Cell>");
+                excelContent.AppendLine($"    <Cell ss:StyleID=\"CellStyle\"><Data ss:Type=\"String\">{checkIn}</Data></Cell>");
+                excelContent.AppendLine($"    <Cell ss:StyleID=\"CellStyle\"><Data ss:Type=\"String\">{checkOut}</Data></Cell>");
+                excelContent.AppendLine($"    <Cell ss:StyleID=\"CellStyle\"><Data ss:Type=\"String\">{System.Net.WebUtility.HtmlEncode(guestName)}</Data></Cell>");
+                excelContent.AppendLine($"    <Cell ss:StyleID=\"CellStyle\"><Data ss:Type=\"String\">{companions}</Data></Cell>");
+                excelContent.AppendLine($"    <Cell ss:StyleID=\"CellStyle\"><Data ss:Type=\"String\">{roomViewType}</Data></Cell>");
+                excelContent.AppendLine("   </Row>");
+            }
+
+            excelContent.AppendLine("  </Table>");
+            excelContent.AppendLine(" </Worksheet>");
+            excelContent.AppendLine("</Workbook>");
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(excelContent.ToString());
+            return File(bytes, "application/vnd.ms-excel", $"Daily_Report_{selectedDate:yyyy-MM-dd}.xls");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExportBreakfastReportExcel(DateTime? date)
+        {
+            var selectedDate = date ?? DateTime.Today;
+            var rooms = await _context.Rooms
+                .Include(r => r.Bookings.Where(b => b.CheckInDate.Date <= selectedDate.Date && b.CheckOutDate.Date > selectedDate.Date && !b.IsCheckedOut))
+                .OrderBy(r => r.RoomNumber)
+                .ToListAsync();
+
+            var sb = new System.Text.StringBuilder();
+
+            sb.AppendLine("<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel' xmlns='http://www.w3.org/TR/REC-html40'>");
+            sb.AppendLine("<head><meta charset='utf-8'>");
+            sb.AppendLine("<style>");
+            sb.AppendLine("body { direction: rtl; }");
+            sb.AppendLine("table { border-collapse: collapse; direction: rtl; font-family: 'Cairo', Tahoma, sans-serif; }");
+            sb.AppendLine("th { background-color: #e0e0e0; color: #000; padding: 6px; border: 1px solid #000; font-weight: bold; text-align: center; font-size: 11px; }");
+            sb.AppendLine("td { padding: 5px; border: 1px solid #000; text-align: center; font-size: 11px; vertical-align: middle; height: 8px; }");
+            sb.AppendLine(".title-cell { font-size: 13px; font-weight: bold; text-align: center; background-color: #f8f9fa; border: 1px solid #000; padding:1px; }");
+            sb.AppendLine(".total-row td { font-weight: bold; background-color: #f1f1f1; border: 1px solid #000; }");
+            sb.AppendLine("</style>");
+
+            // إخبار برنامج الإكسيل بفتح الملف باتجاه اليمين لليسار رسمياً
+            sb.AppendLine("<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>");
+            sb.AppendLine("<x:Name>بلان الفطار</x:Name>");
+            sb.AppendLine("<x:WorksheetOptions><x:DisplayRightToLeft/></x:WorksheetOptions>");
+            sb.AppendLine("</x:ExcelWorksheet></x:ExcelWorkbook></xml>");
+
+            sb.AppendLine("</head><body>");
+
+            sb.AppendLine("<table>");
+
+            // سطر العنوان مدمج على الثلاثة أعمدة من اليمين
+            sb.AppendLine($"<tr><td colspan='3' class='title-cell'>بلان فطار نايل جويل يوم {selectedDate:yyyy/MM/dd}</td></tr>");
+            sb.AppendLine("<tr><td colspan='3' style='border:none; height:10px;'></td></tr>");
+
+            // رؤوس الأعمدة بالترتيب الصحيح المطابق لصورتك (الغرف، عدد الفطار، ملاحظات)
+            sb.AppendLine("<tr>");
+            sb.AppendLine("<th style='width: 70px;'>الغرف</th>");
+            sb.AppendLine("<th style='width: 85px;'>عدد الفطار</th>");
+            sb.AppendLine("<th style='width: 250px;'>ملاحظات</th>");
+            sb.AppendLine("</tr>");
+
+            int totalBreakfast = 0;
+
+            foreach (var room in rooms)
+            {
+                var activeBooking = room.Bookings?.FirstOrDefault();
+                string roomNum = room.RoomNumber ?? "";
+                string breakfastCountStr = "";
+                string notes = "";
+
+                if (activeBooking != null)
+                {
+                    string occType = (activeBooking.OccupancyType ?? activeBooking.RoomType ?? "").ToUpper();
+                    string notesField = (activeBooking.Notes ?? "").ToUpper();
+
+                    // استبعاد غرف الـ MU تماماً
+                    bool isMu = occType.Contains("MU") || notesField.Contains("MU");
+
+                    if (!isMu)
+                    {
+                        if (occType.Contains("SINGLE") || occType.Contains("سنجل")) { breakfastCountStr = "1"; totalBreakfast += 1; }
+                        else if (occType.Contains("DOUBLE") || occType.Contains("دبل")) { breakfastCountStr = "2"; totalBreakfast += 2; }
+                        else if (occType.Contains("TRIPLE") || occType.Contains("تريبل")) { breakfastCountStr = "3"; totalBreakfast += 3; }
+                        else { breakfastCountStr = "1"; totalBreakfast += 1; }
+                    }
+                }
+
+                sb.AppendLine("<tr>");
+                sb.AppendLine($"<td>{roomNum}</td>");
+                sb.AppendLine($"<td>{breakfastCountStr}</td>");
+                sb.AppendLine($"<td>{notes}</td>");
+                sb.AppendLine("</tr>");
+            }
+
+            // صف الإجمالي في النهاية
+            sb.AppendLine("<tr class='total-row'>");
+            sb.AppendLine("<td>الإجمالي</td>");
+            sb.AppendLine($"<td>{totalBreakfast}</td>");
+            sb.AppendLine("<td></td>");
+            sb.AppendLine("</tr>");
+
+            sb.AppendLine("</table></body></html>");
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+            // استخدام امتداد .xls لمنع ظهور أي تحذيرات ولفتح الملف كإكسيل معتمد ومثالي
+            return File(bytes, "application/vnd.ms-excel", $"Breakfast_Plan_{selectedDate:yyyy-MM-dd}.xls");
+        }
+
+        [Authorize(Roles = "Admin,CService")]
+        public async Task<IActionResult> AdminBookingsReport(DateTime? date)
+        {
+            // إذا لم يتم تحديد تاريخ، اجعله تاريخ اليوم
+            DateTime selectedDate = date ?? DateTime.Today;
+
+            // جلب الحجوزات التي يكون تاريخ الدخول فيها مطابقاً تماماً للتاريخ المختار
+            var bookings = await _context.Bookings
+                .Where(b => b.CheckInDate.Date == selectedDate.Date)
+                .OrderByDescending(b => b.CheckInDate)
+                .ToListAsync();
+
+            // تمرير التاريخ المحدد للـ View ليبقى مخزناً في حقل الإدخال
+            ViewBag.SelectedDate = selectedDate.ToString("yyyy-MM-dd");
+
+            return View(bookings);
+        }
+        [HttpPost]
+        [Authorize(Roles = "Admin,CService")]
+        public async Task<IActionResult> UpdateContactInfo(int id, string companyName, string guestPhone, DateTime checkInDate, DateTime checkOutDate, string occupancyType)
+        {
+            var booking = await _context.Bookings.FindAsync(id);
+            if (booking == null) return NotFound();
+
+            booking.ReceiptNumber = companyName; // اسم الشركة مخزن في ReceiptNumber
+            booking.GuestPhone = guestPhone;
+            booking.CheckInDate = checkInDate;
+            booking.CheckOutDate = checkOutDate;
+            booking.RoomType = occupancyType; // تم التصحيح هنا لاستخدام الحقل الصحيح من الموديل
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(AdminBookingsReport), new { date = checkInDate.ToString("yyyy-MM-dd") });
         }
 
         [HttpPost]

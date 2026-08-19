@@ -1,10 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Identity
 @using NileJewal.Models
 @inject UserManager<ApplicationUser> UserManager
-
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
+<!DOCTYPE html><html lang="ar" dir="rtl"><head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - نظام إدارة الفندق</title>
@@ -18,9 +15,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="~/images/nileJewal.jfif" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-</head>
-<body class="bg-light">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" /></head><body class="bg-light">
     <header class="sticky-top">
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
             <div class="container-fluid px-4">
@@ -42,30 +37,44 @@
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1">
                         @if (User.Identity.IsAuthenticated)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link px-3 rounded-3" asp-controller="Booking" asp-action="DailyGrid">
-                                    <i class="bi bi-grid-3x3-gap-fill ms-1"></i> مخطط الغرف اليومي
-                                </a>
-                            </li>
+                            @* إذا لم يكن المستخدم CService، أظهر له الروابط العادية الخاصة بالأدمن والموظفين الآخرين *@
+                            @if (!User.IsInRole("CService"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link px-3 rounded-3" asp-controller="Booking" asp-action="DailyGrid">
+                                        <i class="bi bi-grid-3x3-gap-fill ms-1"></i> مخطط الغرف اليومي
+                                    </a>
+                                </li>
+                                <!-- خيار البحث الشامل عن النزلاء لكل المستخدمين ما عدا خدمة العملاء (حسب رغبتك، أو ارفعه للخارج) -->
+                                <li class="nav-item">
+                                    <a class="nav-link px-3 rounded-3" asp-controller="GuestSearch" asp-action="Index">
+                                        <i class="bi bi-person-search ms-1"></i> بحث النزلاء
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Booking" asp-action="CheckOutToday">مغادرات اليوم</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Booking" asp-action="ArrivingToday">على وصول</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Booking" asp-action="SearchAvailable">
+                                        <i class="fas fa-search me-1"></i> البحث عن المتاح
+                                    </a>
+                                </li>
+                            }
 
-                            <!-- خيار البحث الشامل عن النزلاء لكل المستخدمين -->
-                            <li class="nav-item">
-                                <a class="nav-link px-3 rounded-3" asp-controller="GuestSearch" asp-action="Index">
-                                    <i class="bi bi-person-search ms-1"></i> بحث النزلاء
-                                </a>
-                            </li>
-                            <li class="nav-item">
-    <a class="nav-link" asp-controller="Booking" asp-action="CheckOutToday">مغادرات اليوم</a>
-</li>
-<li class="nav-item">
-    <a class="nav-link" asp-controller="Booking" asp-action="ArrivingToday">على وصول</a>
-</li>
-                            <li class="nav-item">
-    <a class="nav-link text-dark" asp-controller="Booking" asp-action="SearchAvailable">
-        <i class="fas fa-search me-1"></i> البحث عن المتاح
-    </a>
-</li>
+                            @* زر بيانات العملاء يظهر للـ Admin ولـ CService فقط *@
+                            @if (User.IsInRole("Admin") || User.IsInRole("CService"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-warning fw-bold" asp-controller="Booking" asp-action="AdminBookingsReport">
+                                        <i class="bi bi-shield-lock"></i> بيانات العملاء
+                                    </a>
+                                </li>
+                            }
 
+                            @* روابط الأدمن الخاصة فقط *@
                             @if (User.IsInRole("Admin"))
                             {
                                 <li class="nav-item">

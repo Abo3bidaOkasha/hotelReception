@@ -35,6 +35,16 @@
                 حجز غرف عن يوم: <span class="text-dark">@selectedDate.ToString("yyyy/MM/dd")</span>
             </h4>
             <!--zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-->
+            <!-- زر الطباعة يمرر نفس التاريخ الحالي المختار -->
+<a asp-action="PrintDailyReport" asp-route-date="@(((DateTime)ViewBag.SelectedDate).ToString("yyyy-MM-dd"))" target="_blank" class="btn btn-dark btn-sm ms-2">
+    <i class="fas fa طباعة me-1"></i> طباعة حجوزات اليوم
+</a>
+<a href="@Url.Action("ExportDailyReportExcel", "Booking", new { date = ((DateTime)ViewBag.SelectedDate).ToString("yyyy-MM-dd") })" class="btn btn-success btn-sm no-print">
+    <i class="fas fa-file-excel me-1"></i> بلان الجيش
+</a>
+<a href="@Url.Action("ExportBreakfastReportExcel", "Booking", new { date = ((DateTime)ViewBag.SelectedDate).ToString("yyyy-MM-dd") })" class="btn btn-warning btn-sm no-print">
+    <i class="fas fa-coffee me-1"></i> تحميل بلان الفطار
+</a>
             <!--zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-->
             <form method="get" asp-controller="Booking" asp-action="DailyGrid" class="d-flex align-items-center gap-2">
                 <a asp-controller="Booking" asp-action="DailyGrid" asp-route-date="@selectedDate.AddDays(-1).ToString("yyyy-MM-dd")" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
@@ -106,7 +116,15 @@
                                         <strong class="text-dark">الاسم:</strong>
                                         <span class="text-secondary fw-semibold text-truncate">@primaryBooking.GuestName</span>
                                     </li>
-                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                    @* <div class="mb-1">
+                                        <i class="fas fa-receipt text-secondary"></i> <strong>رقم الإيصال:</strong> @booking.ReceiptNumber
+                                    </div> *@
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2" style="display:none !important;">
+                                        <i class="bi bi-receipt text-primary fs-6"></i>
+                                        <strong class="text-dark">اسم الشركه:</strong>
+                                        <span class="text-secondary">@primaryBooking.ReceiptNumber</span>
+                                    </li>
+                                    <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2" style="display: none !important;">
                                         <i class="bi bi-telephone-fill text-success fs-6"></i>
                                         <strong class="text-dark">موبايل:</strong>
                                         <span class="text-secondary dir-ltr">@primaryBooking.GuestPhone</span>
@@ -249,7 +267,7 @@
                                             <strong class="text-dark">الاسم:</strong>
                                             <span class="text-secondary fw-semibold text-truncate">@housingBooking.GuestName</span>
                                         </li>
-                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2">
+                                        <li class="list-group-item px-0 py-1 bg-transparent border-0 d-flex align-items-center gap-2" style="display: none !important;">
                                             <i class="bi bi-telephone-fill text-success fs-6"></i>
                                             <strong class="text-dark">موبايل:</strong>
                                             <span class="text-secondary dir-ltr">@housingBooking.GuestPhone</span>
@@ -394,6 +412,10 @@
                         <label class="form-label">اسم النزيل</label>
                         <input type="text" name="GuestName" class="form-control" required />
                     </div>
+                    <div class="mb-2" style="display:none !important;">
+                        <label class="form-label">اسم الشركه</label>
+                        <input type="text" name="ReceiptNumber" class="form-control" />
+                    </div>
                     <div class="mb-2">
                         <label class="form-label">رقم الموبايل</label>
                         <input type="text" name="GuestPhone" id="guestPhoneInput" class="form-control" maxlength="11" oninput="validatePhone(this)" placeholder="010XXXXXXXX" required />
@@ -454,10 +476,7 @@
                         </div>
                     </div>
 
-                    <div class="mb-2">
-                        <label class="form-label">رقم الإيصال</label>
-                        <input type="text" name="ReceiptNumber" class="form-control" />
-                    </div>
+
 
                     <div class="row g-2 mb-2">
                         <div class="col-6">
@@ -489,7 +508,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" dir="rtl">
             <form asp-controller="Booking" asp-action="Edit" method="post">
-                <div class="modal-header bg-warning text-dark">
+                <div class="modal-header bg-warning text-dark"  >
                     <h5 class="modal-title fw-bold">تعديل بيانات الحجز</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -501,7 +520,11 @@
                         <label class="form-label">اسم النزيل</label>
                         <input type="text" name="GuestName" id="editGuestName" class="form-control" required />
                     </div>
-                    <div class="mb-2">
+                    <div class="mb-2" style="display:none !important; ">
+                        <label class="form-label">اسم الشركه</label>
+                        <input type="text" name="ReceiptNumber" id="editReceipt" class="form-control" />
+                    </div>
+                    <div class="mb-2" style="display: none !important;">
                         <label class="form-label">رقم الموبايل</label>
                         <input type="text" name="GuestPhone" id="editGuestPhone" class="form-control" required />
                     </div>
@@ -558,12 +581,12 @@
                             <input type="number" step="0.01" name="PaidAmount" id="editPaid" class="form-control" required />
                         </div>
                     </div>
-
-                    <div class="mb-2">
-                        <label class="form-label">رقم الإيصال</label>
+                    
+                    @* <div class="mb-2" style="display:none !important;">
+                        <label class="form-label">اسم الشركه</label>
                         <input type="text" name="ReceiptNumber" id="editReceipt" class="form-control" />
                     </div>
-
+                     *@
                     <div class="row g-2 mb-2">
                         <div class="col-6">
                             <label class="form-label">تاريخ الوصول</label>

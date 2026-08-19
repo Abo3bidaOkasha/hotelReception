@@ -1,0 +1,187 @@
+﻿@model IEnumerable<NileJewal.Models.Room>
+
+@{
+    ViewData["Title"] = "تقرير غرف يوم " + ((DateTime)ViewBag.SelectedDate).ToString("yyyy/MM/dd");
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', Tahoma, sans-serif;
+            background: #fff;
+            color: #212529;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .print-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .print-header {
+            border-bottom: 3px solid #0d6efd;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .print-header h3 {
+            color: #0d6efd;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        table {
+            width: 100% !important;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #dee2e6 !important;
+            padding: 10px 12px;
+            text-align: center;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #f8f9fa !important;
+            color: #333;
+            font-weight: 700;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        tr:nth-child(even) {
+            background-color: #fcfcfc;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .badge-booked {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .badge-empty {
+            color: #198754;
+            font-weight: bold;
+        }
+
+        @@media print {
+            body {
+                padding: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-container {
+                width: 100%;
+                max-width: none;
+            }
+            table {
+                page-break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            thead {
+                display: table-header-group;
+            }
+        }
+    </style>
+</head>
+<body onload="window.print();">
+
+    <div class="print-container">
+        <!-- رأس الصفحة -->
+        <div class="print-header">
+            <div>
+                <h3 class="m-0">فندق نايل جويل - Nile Jewel Hotel</h3>
+                <p class="text-muted m-0">تقرير حركة الغرف والحجوزات اليومي</p>
+            </div>
+            <div class="text-start">
+                <h5 class="fw-bold mb-1">التاريخ: @(((DateTime)ViewBag.SelectedDate).ToString("yyyy/MM/dd"))</h5>
+                <button class="btn btn-outline-primary btn-sm no-print" onclick="window.print()">
+                    طباعة التقرير مرة أخرى
+                </button>
+            </div>
+        </div>
+
+        <!-- محتوى الجدول -->
+        @if (Model != null && Model.Any())
+        {
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">رقم الغرفة</th>
+                        @* <th style="width: 12%;">نوع الغرفة</th> *@
+                        <th style="width: 15%;">حالة الغرفة اليوم</th>
+                        <th style="width: 22%;">اسم النزيل</th>
+                        <th style="width: 15%;">نوع الإقامة</th>
+                        <th style="width: 12%;">تاريخ الوصول</th>
+                        <th style="width: 12%;">تاريخ المغادرة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var room in Model)
+                    {
+                        var activeBooking = room.Bookings?.FirstOrDefault();
+                        string occupancyDisplay = "-";
+
+                        if (activeBooking != null)
+                        {
+                            if (!string.IsNullOrEmpty(activeBooking.OccupancyType))
+                            {
+                                occupancyDisplay = activeBooking.OccupancyType.ToUpper() == "MU" ? "ميكب" : activeBooking.OccupancyType;
+                            }
+                            else if (!string.IsNullOrEmpty(activeBooking.RoomType))
+                            {
+                                occupancyDisplay = activeBooking.RoomType.ToUpper() == "MU" ? "ميكب" : activeBooking.RoomType;
+                            }
+                        }
+
+                        <tr>
+                            <td class="fw-bold fs-6">@room.RoomNumber</td>
+                            @* <td>@room.Type</td> *@
+                            <td>
+                                @if (activeBooking != null)
+                                {
+                                    <span class="badge-booked">محجوزة</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-empty">فارغة (متاحة)</span>
+                                }
+                            </td>
+                            <td>@(activeBooking != null ? activeBooking.GuestName : "-")</td>
+                            <td>@occupancyDisplay</td>
+                            <td>@(activeBooking != null ? activeBooking.CheckInDate.ToString("yyyy/MM/dd") : "-")</td>
+                            <td>@(activeBooking != null ? activeBooking.CheckOutDate.ToString("yyyy/MM/dd") : "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="alert alert-warning text-center py-4">
+                لا توجد غرف مسجلة في النظام.
+            </div>
+        }
+    </div>
+
+</body>
+</html>
